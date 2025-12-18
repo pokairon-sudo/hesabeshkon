@@ -1,0 +1,31 @@
+{# templates/base.html #}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    {# Tailwind (browser‑compiled) #}
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+
+    {# Swiper (optional carousel) #}
+    <link rel="stylesheet"
+          href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css">
+
+    {# SweetAlert2 for modal dialogs #}
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <title>{% block title %}Duck.ai{% endblock title %}</title>
+</head>
+
+<body class="bg-gray-100 min-h-screen" {% block bodystyle %}{% endblock bodystyle %}>
+    {# Common layout pieces #}
+    {% include "navbar.html" %}
+    {% include "messages.html" %}
+
+    <main class="container mx-auto p-4">
+        {% block content %}{% endblock content %}
+    </main>
+</body>
+</html>
+

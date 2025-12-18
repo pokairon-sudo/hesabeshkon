@@ -1,0 +1,44 @@
+
+{% extends "base.html" %}
+
+{% block title %}Create Product – Duck.ai{% endblock title %}
+
+{% block content %}
+<h1 class="text-2xl font-bold mb-6">Add a new product</h1>
+
+<form method="post" class="grid gap-4 max-w-xl">
+    {% csrf_token %}
+    {{ form.non_field_errors }}
+
+    <div>{{ form.name.label_tag }}{{ form.name }}{{ form.name.errors }}</div>
+    <div>{{ form.tag.label_tag }}{{ form.tag }}{{ form.tag.errors }}</div>
+    <div>{{ form.serial_number.label_tag }}{{ form.serial_number }}{{ form.serial_number.errors }}</div>
+    <div>{{ form.price_for_company.label_tag }}{{ form.price_for_company }}{{ form.price_for_company.errors }}</div>
+    <div>{{ form.price_for_customer.label_tag }}{{ form.price_for_customer }}{{ form.price_for_customer.errors }}</div>
+    <div>{{ form.count.label_tag }}{{ form.count }}{{ form.count.errors }}</div>
+
+    <!-- Offer fields (value + type) -->
+    <div class="grid grid-cols-2 gap-4">
+        <div>
+            {{ form.offer_value.label_tag }}
+            {{ form.offer_value }}
+            {{ form.offer_value.errors }}
+        </div>
+        <div>
+            {{ form.offer_type.label_tag }}
+            {{ form.offer_type }}
+            {{ form.offer_type.errors }}
+        </div>
+    </div>
+
+    <button type="submit"
+            class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded">
+        Save product
+    </button>
+
+    <a href="{% url 'l-product' %}"
+       class="inline-block mt-4 bg-gray-300 hover:bg-gray-400 text-gray-800 font-medium py-2 px-4 rounded">
+        ← Back to product list
+    </a>
+</form>
+{% endblock content %}

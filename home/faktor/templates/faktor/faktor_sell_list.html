@@ -1,0 +1,63 @@
+
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<h2>Invoices</h2>
+
+<form method="get" class="mb-3">
+    <input type="text" name="q" placeholder="Search…" value="{{ request.GET.q }}" class="form-control" />
+</form>
+
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>#</th>
+            <th>Type</th>
+            <th>Date</th>
+            <th>Customer / Supplier</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for fakt in object_list %}
+            <tr>
+                <td>{{ fakt.number }}</td>
+                <td>{{ fakt.get_factor_type_display }}</td>
+                <td>{{ fakt.date }}</td>
+                <td>
+                    {% if fakt.factor_type == "sell" %}
+                        {{ fakt.customer_name }}
+                    {% else %}
+                        {{ fakt.supplier_name }}
+                    {% endif %}
+                </td>
+                <td>
+                    <a href="{% url 'faktor:sell-edit' fakt.pk %}" class="btn btn-sm btn-outline-primary">Edit</a>
+                    <a href="{% url 'faktor:sell-delete' fakt.pk %}" class="btn btn-sm btn-outline-danger">Delete</a>
+                </td>
+            </tr>
+        {% empty %}
+            <tr><td colspan="5">No invoices found.</td></tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+{% if is_paginated %}
+<nav aria-label="Page navigation">
+    <ul class="pagination">
+        {% if page_obj.has_previous %}
+            <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}">Previous</a></li>
+        {% endif %}
+        {% for num in paginator.page_range %}
+            <li class="page-item {% if page_obj.number == num %}active{% endif %}">
+                <a class="page-link" href="?page={{ num }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}">{{ num }}</a>
+            </li>
+        {% endfor %}
+        {% if page_obj.has_next %}
+            <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}">Next</a></li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}
+{% endblock %}

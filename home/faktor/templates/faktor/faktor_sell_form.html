@@ -1,0 +1,167 @@
+
+{% block content %}
+<!-- App Container -->
+<div class="h-screen flex flex-col bg-gray-200" data-faktor-id="{{ faktor.pk }}">
+
+  <!-- Header -->
+  <header class="bg-gray-300 px-4 py-2 flex justify-between items-center text-sm font-bold">
+    <div>کالاهای انتخاب شده</div>
+    <div>{{ today|date:"Y/m/d" }}</div>
+  </header>
+
+  <!-- Main Content -->
+  <div class="flex flex-1 overflow-hidden">
+
+    <!-- Left Sidebar -->
+    <div class="w-14 bg-gray-300 flex flex-col items-center py-2 space-y-2">
+      <button class="w-9 h-9 bg-gray-200 border">▲</button>
+      <button class="w-9 h-9 bg-gray-200 border">▼</button>
+      <button class="w-9 h-9 bg-gray-200 border">▲</button>
+      <button class="w-9 h-9 bg-gray-200 border">▼</button>
+    </div>
+
+    <!-- Table Area -->
+    <div class="flex-1 bg-white overflow-auto">
+      <table class="w-full border-collapse text-sm">
+        <thead>
+          <tr class="bg-gray-200 text-center">
+            <th class="border p-2">کد کالا</th>
+            <th class="border p-2">نام کالا</th>
+            <th class="border p-2">تعداد</th>
+            <th class="border p-2">واحد</th>
+            <th class="border p-2">قیمت واحد</th>
+            <th class="border p-2">قیمت کل</th>
+            <th class="border p-2">درصد تخفیف</th>
+            <th class="border p-2">کاربر</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in items %}
+          <tr>
+            <td class="border p-2">{{ item.product.serial_number }}</td>
+            <td class="border p-2">{{ item.product.name }}</td>
+            <td class="border p-2">{{ item.quantity }}</td>
+            <td class="border p-2">عدد</td>
+            <td class="border p-2">{{ item.unit_price }}</td>
+            <td class="border p-2">{{ item.total_price }}</td>
+            <td class="border p-2">{{ item.discount_percent }}</td>
+            <td class="border p-2">{{ item.user.username }}</td>
+          </tr>
+          {% empty %}
+          <tr class="h-10"><td colspan="8" class="border"></td></tr>
+          <tr class="h-10"><td colspan="8" class="border"></td></tr>
+          <tr class="h-10"><td colspan="8" class="border"></td></tr>
+          <tr class="h-10"><td colspan="8" class="border"></td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Right Panel -->
+    <div class="w-72 bg-gray-300 p-2 flex flex-col gap-2 text-sm">
+
+      <div>
+        <label class="block mb-1">بارکد کالا</label>
+        <input type="text" id="barcode-input" class="w-full border p-1" placeholder="بارکد را وارد کنید">
+      </div>
+
+      <div class="bg-green-300 p-2 flex justify-between font-bold">
+        <span>اعتباری</span>
+        <span>{{ credit|default:"صفر" }}</span>
+      </div>
+
+      <div>
+        <label class="block mb-1">کاربر</label>
+        <input type="text" class="w-full border p-1" value="{{ user.username }}" readonly>
+      </div>
+
+      <div class="flex-1">
+        <label class="block mb-1">توضیحات فاکتور</label>
+        <textarea class="w-full h-full border p-1 resize-none">{{ description }}</textarea>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="bg-zinc-900 text-white px-4 py-3 flex justify-between items-center">
+
+    <!-- Total -->
+    <div class="flex items-center gap-3 text-lg">
+      <span>جمع کل</span>
+      <span class="text-green-400 font-bold">{{ total }}</span>
+    </div>
+
+    <!-- Buttons -->
+    <div class="flex gap-2 text-sm font-bold">
+
+      <button class="bg-blue-500 px-4 py-2 rounded" onclick="registerAndView()">F7 ثبت و رؤیت</button>
+
+      <button class="bg-green-500 px-4 py-2 rounded" onclick="register()">F8 ثبت ✓</button>
+
+      <button class="bg-yellow-400 text-black px-4 py-2 rounded" onclick="registerAndPrint()">F9 ثبت و چاپ</button>
+
+      <button class="bg-red-500 px-4 py-2 rounded" onclick="exit()">خروج ✖</button>
+
+    </div>
+  </footer>
+
+</div>
+
+<form id="faktor-form" method="post" action="{% if faktor %}{% url 'faktor:sell-edit' faktor.pk %}{% endif %}" style="display:none;">
+  {% csrf_token %}
+  <input type="hidden" name="total_price" value="{{ total|default:0 }}">
+  <input type="hidden" name="description" value="{{ description|default:'' }}">
+</form>
+
+<script>
+document.getElementById('barcode-input').addEventListener('keypress', function(e) {
+  if (e.key === 'Enter') {
+    const barcode = this.value;
+    const faktorId = document.querySelector('[data-faktor-id]').dataset.faktorId;
+    if (!faktorId) {
+      alert('Please save the faktor first.');
+      return;
+    }
+    // AJAX to search product and add to list
+    fetch('{% url "faktor:add-item" %}', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+      },
+      body: new URLSearchParams({
+        barcode: barcode,
+        faktor_id: faktorId
+      })
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        location.reload();
+      } else {
+        alert(data.error);
+      }
+    });
+    this.value = '';
+  }
+});
+
+function registerAndView() {
+  document.getElementById('faktor-form').submit();
+}
+
+function register() {
+  document.getElementById('faktor-form').submit();
+}
+
+function registerAndPrint() {
+  document.getElementById('faktor-form').submit();
+  setTimeout(() => window.print(), 1000);
+}
+
+function exit() {
+  window.location.href = '{% url "faktor:sell-list" %}';
+}
+</script>
+{% endblock %}
