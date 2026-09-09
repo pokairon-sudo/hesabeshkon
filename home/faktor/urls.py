@@ -11,6 +11,8 @@ from .views import (
     ListFactorBuyView,
     EditFaktorBuyView,
     DeleteFaktorBuyView,
+    AddBuyItemView,
+    SearchProductsView,
 )
 
 app_name = "faktor"
@@ -38,6 +40,18 @@ urlpatterns = [
         name="sell-delete",
     ),
 
+    # ---------- ITEMS ----------
+    path(
+        "item/add/",
+        AddItemView.as_view(),
+        name="add-item",
+    ),
+    path(
+        "products/search/",
+        SearchProductsView.as_view(),
+        name="search-products",
+    ),
+
     # ---------- BUY ----------
     path(
         "buy/create/",
@@ -58,5 +72,10 @@ urlpatterns = [
         "buy/delete/<int:pk>/",
         DeleteFaktorBuyView.as_view(),
         name="buy-delete",
+    ),
+    path(
+        "buy-item/add/",
+        AddBuyItemView.as_view(),
+        name="add-buy-item",
     ),
 ]

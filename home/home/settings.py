@@ -20,6 +20,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
+# TODO (T5.1): move to an environment variable before deploying.
 SECRET_KEY = 'django-insecure-gy5=-!i(dq(0exa$cn&zzoe3jk4n_xnvb0o)7mvo^!%xpo(t&h'
 
 # SECURITY WARNING: don't run with debug turned on in production!
@@ -37,7 +38,8 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'testpage',
+    'django.contrib.humanize',  # thousands-separator currency formatting (intcomma)
+    # 'testpage' removed — T0.4: dead/broken scaffolding app, deleted from the codebase.
     'accounts',
     'homepage',
     'product',
@@ -127,7 +129,18 @@ STATIC_URL = 'static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 
-AUTH_USER_MODEL = 'accounts.User' 
+AUTH_USER_MODEL = 'accounts.User'
 
 
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+# Feature toggle (#4 in the dashboard rework): buy invoices are temporarily
+# disabled per request. The views/URLs/templates all still exist — this
+# flag just blocks access and hides the dashboard tile. Flip back to True
+# to re-enable.
+FAKTOR_BUY_ENABLED = False
+
+
+# EMAIL — T0.7: SMTP requires real host/credentials to work. In development,
+# use the console backend so password-reset emails are printed to the
+# terminal instead of silently failing. Swap back to SMTP (with env-based
+# credentials, see roadmap T5.1) when you deploy.
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'

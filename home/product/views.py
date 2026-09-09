@@ -1,14 +1,17 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from django.views import View
 from django.contrib import messages
+from django.contrib.auth.mixins import LoginRequiredMixin
 from .forms import ProductForm
 from .models import Product
 from django.urls import reverse_lazy
 from django.views.generic import UpdateView
+from accounts.mixins import StaffGroupRequiredMixin
 # Create your views here.
 
 
-class CreateProductView(View):
+class CreateProductView(StaffGroupRequiredMixin, View):
+    # T2.1: only 'personal'/'admin' users (or staff) can add products.
     def get(self, request):
         form = ProductForm()
         return render(request, "product/create.html", {"form": form})
@@ -18,13 +21,17 @@ class CreateProductView(View):
         if form.is_valid():
             form.save()
             messages.success(request, "Your product successfuly added .")
-            return redirect("c-product")
+            return redirect("product:c-product")
         messages.error(request, "Your form for product is invalid.")
         return render(request, "product/create.html", {"form": form})
 
 
-class ListProductView(View):
-    """List products with optional search by name or serial number."""
+class ListProductView(LoginRequiredMixin, View):
+    """List products with optional search by name or serial number.
+
+    T2.2: any authenticated user (including plain 'customer' accounts) can
+    browse the catalog — only create/edit/delete are staff-restricted.
+    """
     def get(self, request):
         query = request.GET.get("q", "").strip()
         filter_by = request.GET.get("field", "name")   # default search field
@@ -46,7 +53,7 @@ class ListProductView(View):
 
 
 
-class DeleteProductView(View):
+class DeleteProductView(StaffGroupRequiredMixin, View):
     """
     Delete a product directly on POST.
     The view expects a POST request (e.g., from a form or a button).
@@ -57,13 +64,13 @@ class DeleteProductView(View):
     def post(self, request, pk):
         product = get_object_or_404(Product, pk=pk)
         product.delete()
-        messages.success(request, f'Product “{product.name}” was deleted.')
-        return redirect("l-product")
+        messages.success(request, f'Product "{product.name}" was deleted.')
+        return redirect("product:l-product")
 
 
 
 
-class EditProductView(View):
+class EditProductView(StaffGroupRequiredMixin, View):
     """Display a form pre‑filled with the product data and save changes."""
 
     template_name = "product/edit.html"
@@ -79,8 +86,7 @@ class EditProductView(View):
         if form.is_valid():
             form.save()
             messages.success(request,'your product edited successfuly')
-            return redirect("l-product")          # back to the list view
+            return redirect("product:l-product")          # back to the list view
         # if the form is invalid, re‑render with errors
         messages.error(request,'your form is invalid ')
         return render(request, self.template_name, {"form": form, "product": product})
-

@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+
+{% block title %}Sales & Profit Report – Duck.ai{% endblock title %}
+
+{% block content %}
+<div dir="rtl" class="max-w-5xl mx-auto">
+<h1 class="text-2xl font-bold mb-6 text-amber-100">گزارش فروش و سود</h1>
+
+<div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+    <div class="glass-panel-light p-4">
+        <div class="text-stone-500 text-sm">مجموع فروش</div>
+        <div class="text-2xl font-bold text-blue-600">{{ total_revenue|floatformat:0 }}</div>
+    </div>
+    <div class="glass-panel-light p-4">
+        <div class="text-stone-500 text-sm">مجموع بهای تمام‌شده (تقریبی)</div>
+        <div class="text-2xl font-bold text-stone-700">{{ total_cost|floatformat:0 }}</div>
+    </div>
+    <div class="glass-panel-light p-4">
+        <div class="text-stone-500 text-sm">سود ناخالص (تقریبی)</div>
+        <div class="text-2xl font-bold text-green-600">{{ total_profit|floatformat:0 }}</div>
+    </div>
+</div>
+
+<p class="text-xs text-white/40 mb-6">
+    * بهای تمام‌شده بر اساس قیمت فعلی محصول برای شرکت محاسبه شده، نه قیمت زمان فروش —
+    اگر قیمت‌ها تغییر کرده باشند، این عدد یک تقریب است نه مقدار دقیق تاریخی.
+</p>
+
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <div class="glass-panel-light p-4">
+        <h2 class="font-bold mb-2 text-stone-800">فروش روزانه (۳۰ روز اخیر)</h2>
+        <canvas id="dailySalesChart" height="200"></canvas>
+    </div>
+    <div class="glass-panel-light p-4">
+        <h2 class="font-bold mb-2 text-stone-800">پرفروش‌ترین کالاها (بر اساس مبلغ فروش)</h2>
+        <canvas id="topProductsChart" height="200"></canvas>
+    </div>
+</div>
+</div>
+
+{{ daily_labels|json_script:"daily-labels" }}
+{{ daily_values|json_script:"daily-values" }}
+{{ top_product_labels|json_script:"top-product-labels" }}
+{{ top_product_values|json_script:"top-product-values" }}
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<script>
+const dailyLabels = JSON.parse(document.getElementById('daily-labels').textContent);
+const dailyValues = JSON.parse(document.getElementById('daily-values').textContent);
+const topProductLabels = JSON.parse(document.getElementById('top-product-labels').textContent);
+const topProductValues = JSON.parse(document.getElementById('top-product-values').textContent);
+
+new Chart(document.getElementById('dailySalesChart'), {
+    type: 'line',
+    data: {
+        labels: dailyLabels,
+        datasets: [{
+            label: 'فروش روزانه',
+            data: dailyValues,
+            borderColor: '#2563eb',
+            backgroundColor: 'rgba(37,99,235,0.1)',
+            tension: 0.3,
+            fill: true,
+        }]
+    },
+    options: { responsive: true, plugins: { legend: { display: false } } }
+});
+
+new Chart(document.getElementById('topProductsChart'), {
+    type: 'bar',
+    data: {
+        labels: topProductLabels,
+        datasets: [{
+            label: 'مبلغ فروش',
+            data: topProductValues,
+            backgroundColor: '#f59e0b',
+        }]
+    },
+    options: { responsive: true, indexAxis: 'y', plugins: { legend: { display: false } } }
+});
+</script>
+{% endblock content %}

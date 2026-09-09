@@ -48,6 +48,19 @@ class User(AbstractBaseUser, PermissionsMixin):
     def __str__(self):
         return self.email
 
+    @property
+    def is_staff_or_manager(self):
+        """
+        T3.1/T2.1: single source of truth for "can manage products/faktors" —
+        used both here (so navbar links can check it directly in templates,
+        since Django templates call zero-arg properties automatically) and
+        by accounts.mixins.StaffGroupRequiredMixin, so the definition of
+        "staff" never drifts between the nav and the actual permission check.
+        """
+        if self.is_staff or self.is_superuser:
+            return True
+        return self.groups.filter(name__in=["personal", "admin"]).exists()
+
 
 from django.db.models.signals import post_save
 from django.dispatch import receiver

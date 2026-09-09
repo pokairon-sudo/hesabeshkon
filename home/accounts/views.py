@@ -2,7 +2,8 @@
 
 from django.shortcuts import render, redirect
 from django.views import View
-from .forms import UserRegisterForm
+from django.contrib.auth.mixins import LoginRequiredMixin
+from .forms import UserRegisterForm, ProfileForm
 from django.contrib import messages
 from django.contrib.auth.forms import AuthenticationForm
 from django.contrib.auth import authenticate, login, logout
@@ -52,3 +53,21 @@ class LogoutView(View):
         logout(request)
         messages.success(request, 'You have been successfully logged out.')  # Add success message
         return redirect('home')
+
+
+class ProfileView(LoginRequiredMixin, View):
+    """T2.3: view/edit your own account details without needing /admin/."""
+    template_name = 'profile.html'
+
+    def get(self, request):
+        form = ProfileForm(instance=request.user)
+        return render(request, self.template_name, {'form': form})
+
+    def post(self, request):
+        form = ProfileForm(request.POST, instance=request.user)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Your profile was updated.')
+            return redirect('profile')
+        messages.error(request, 'Please correct the error below.')
+        return render(request, self.template_name, {'form': form})

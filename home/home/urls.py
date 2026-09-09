@@ -15,13 +15,17 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.contrib import admin
-from django.urls import path,include
+from django.urls import path, include
+from faktor.views import ReportsView
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('accounts/', include('accounts.urls')),
     path('accounts/', include('django.contrib.auth.urls')),
-    path('product/',include('product.urls', namespace='product')),
+    path('product/', include('product.urls', namespace='product')),
     path('', include('homepage.urls')),
-    path('faktor/',include('faktor.urls')),
+    path('faktor/', include('faktor.urls')),
+    # #5: sales/profit dashboard. Deliberately NOT at /admin/ — that path
+    # is already Django's real admin site, used for managing groups/users.
+    path('reports/', ReportsView.as_view(), name='reports'),
 ]

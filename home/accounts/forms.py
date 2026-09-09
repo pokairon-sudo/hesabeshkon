@@ -26,3 +26,9 @@ class UserRegisterForm(forms.ModelForm):
         return user
 
 
+class ProfileForm(forms.ModelForm):
+    """T2.3: lets a logged-in user update their own contact details."""
+
+    class Meta:
+        model = User
+        fields = ['username', 'email', 'phone']
