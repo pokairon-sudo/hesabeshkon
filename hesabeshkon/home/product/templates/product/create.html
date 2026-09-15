@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+
+{% block title %}افزودن محصول – Duck.ai{% endblock title %}
+
+{% block content %}
+<div dir="rtl" class="max-w-xl mx-auto">
+    <h1 class="text-2xl font-bold mb-6 text-amber-100">افزودن محصول جدید</h1>
+
+    <form method="post" class="glass-panel p-6 grid gap-4">
+        {% csrf_token %}
+        {% if form.non_field_errors %}
+        <div class="bg-red-500/10 border border-red-400/30 text-red-300 px-4 py-2 rounded-lg text-sm">
+            {{ form.non_field_errors }}
+        </div>
+        {% endif %}
+
+        <div>
+            <label class="block text-white/70 mb-1 text-sm">{{ form.name.label }}</label>
+            {{ form.name }}{{ form.name.errors }}
+        </div>
+        <div>
+            <label class="block text-white/70 mb-1 text-sm">{{ form.tag.label }}</label>
+            {{ form.tag }}{{ form.tag.errors }}
+        </div>
+        <div>
+            <label class="block text-white/70 mb-1 text-sm">{{ form.serial_number.label }}</label>
+            {{ form.serial_number }}{{ form.serial_number.errors }}
+        </div>
+        <div>
+            <label class="block text-white/70 mb-1 text-sm">{{ form.price_for_company.label }}</label>
+            {{ form.price_for_company }}{{ form.price_for_company.errors }}
+        </div>
+        <div>
+            <label class="block text-white/70 mb-1 text-sm">{{ form.price_for_customer.label }}</label>
+            {{ form.price_for_customer }}{{ form.price_for_customer.errors }}
+        </div>
+        <div>
+            <label class="block text-white/70 mb-1 text-sm">{{ form.count.label }}</label>
+            {{ form.count }}{{ form.count.errors }}
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+            <div>
+                <label class="block text-white/70 mb-1 text-sm">{{ form.offer_value.label }}</label>
+                {{ form.offer_value }}{{ form.offer_value.errors }}
+            </div>
+            <div>
+                <label class="block text-white/70 mb-1 text-sm">{{ form.offer_type.label }}</label>
+                {{ form.offer_type }}{{ form.offer_type.errors }}
+            </div>
+        </div>
+
+        <div class="flex gap-2 pt-2">
+            <button type="submit" class="gold-btn py-2 px-4 rounded-lg">
+                ذخیره محصول
+            </button>
+            <a href="{% url 'product:l-product' %}"
+               class="bg-white/10 hover:bg-white/20 border border-white/20 text-white/80 py-2 px-4 rounded-lg transition">
+                ← بازگشت به لیست
+            </a>
+        </div>
+    </form>
+</div>
+{% endblock content %}

@@ -1,0 +1,703 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>فاکتور خرید جدید</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:       oklch(97% 0.004 260);
+      --surface:  oklch(100% 0 0);
+      --raised:   oklch(94% 0.006 260);
+      --border:   oklch(88% 0.008 260);
+      --muted:    oklch(52%   --body:     oklch(18% 0.015 260);
+      --accent:   oklch(52% 0.18 150);   /* سبز برای خرید */
+      --accent-h: oklch(46% 0.20 150);
+      --danger:   oklch(52% 0.20 25);
+      --warn:     oklch(65% 0.18 80);
+      --radius-s: 6px;
+      --radius-m: 10px;
+      --radius-l: 14px;
+      --shadow:   0 1px 3px oklch(0% 0 0 / 10%);
+      --shadow-md:0 4px 12px oklch(0% 0 0 / 12%);
+    }
+
+    body {
+      font-family: Vazirmatn, Tahoma, sans-serif;
+      background: var(--bg);
+      color: var(--body);
+      font-size: 14px;
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+
+    /* ── Layout ── */
+    .page-wrap {
+      display: grid;
+      grid-template-columns: 1fr 320px;
+      grid-template-rows: auto 1fr;
+      gap: 16px;
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 16px;
+      min-height: 100vh;
+    }
+
+    header {
+      grid-column: 1 / -1;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-l);
+      padding: 12px 20px;
+      box-shadow: var(--shadow);
+    }
+
+    header h1 { font-size: 1.1rem; font-weight: 700; flex: 1; }
+    header .badge {
+      background: color-mix(in oklch, var(--accent) 15%, var(--surface));
+      color: var(--accent);
+      border: 1px solid color-mix(in oklch, var(--accent) 30%, var(--border));
+      border-radius: 20px;
+      padding: 2px 12px;
+      font-size: 0.78rem;
+      font-weight: 600;
+    }
+
+    /* ── Main area (cart table) ── */
+    .main-col {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-l);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .card-header {
+      padding: 10px 16px;
+      border-bottom: 1px solid var(--border);
+      font-weight: 600;
+      font-size: 0.85rem;
+      color: var(--muted);
+      background: var(--raised);
+    }
+
+    /* ── Cart table ── */
+    .cart-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+    thead th {
+      background: var(--raised);
+      padding: 8px 12px;
+      text-align: right;
+      font-weight: 600;
+      color: var(--muted);
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+    }
+    tbody tr { border-bottom: 1px solid var(--border); transition: background 120ms; }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: var(--raised); }
+    tbody td { padding: 8px 12px; vertical-align: middle; }
+
+    .qty-ctrl {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .qty-ctrl button {
+      width: 26px; height: 26px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-s);
+      background: var(--surface);
+      cursor: pointer;
+      font-size: 1rem;
+      line-height: 1;
+      color: var(--body);
+      transition: background 120ms;
+    }
+    .qty-ctrl button:hover { background: var(--raised); }
+    .qty-ctrl span { min-width: 24px; text-align: center; font-weight: 600; }
+
+    .btn-remove {
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--danger);
+      font-size: 1.1rem;
+      padding: 2px 6px;
+      border-radius: var(--radius-s);
+      transition: background 120ms;
+    }
+    .btn-remove:hover { background: color-mix(in oklch, var(--danger) 10%, var(--surface)); }
+
+    .empty-cart {
+      padding: 48px 16px;
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    /* ── Right panel ── */
+    .side-col {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .search-box { position: relative; }
+    .search-box input {
+      width: 100%;
+      padding: 8px 12px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-m);
+      background: var(--surface);
+      font-size: 0.9rem;
+      color: var(--body);
+      outline: none;
+      transition: border-color 120ms;
+    }
+    .search-box input:focus { border-color: var(--accent); }
+
+    .results-box {
+      position: absolute;
+      top: calc(100% + 4px);
+      right: 0; left: 0;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-m);
+      box-shadow: var(--shadow-md);
+      max-height: 280px;
+      overflow-y: auto;
+      z-index: 100;
+      display: none;
+    }
+    .results-box.open { display: block; }
+
+    .result-item {
+      padding: 8px 12px;
+      cursor: pointer;
+      transition: background 120ms;
+      border-bottom: 1px solid var(--border);
+    }
+    .result-item:last-child { border-bottom: none; }
+    .result-item:hover { background: var(--raised); }
+    .result-item .r-name { font-weight: 600; font-size: 0.88rem; }
+    .result-item .r-meta { font-size: 0.76rem; color: var(--muted); margin-top: 2px; }
+
+    /* ── Info fields ── */
+    .field { display: flex; flex-direction: column; gap: 4px; }
+    .field label { font-size: 0.8rem; font-weight: 600; color: var(--muted); }
+    .field input, .field textarea {
+      padding: 8px 10px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-m);
+      background: var(--surface);
+      font-size: 0.88rem;
+      color: var(--body);
+      outline: none;
+      transition: border-color 120ms;
+      font-family: inherit;
+    }
+    .field input:focus, .field textarea:focus { border-color: var(--accent); }
+    .field textarea { resize: vertical; min-height: 64px; }
+
+    /* ── Summary ── */
+    .summary {
+      background: color-mix(in oklch, var(--accent) 8%, var(--surface));
+      border: 1px solid color-mix(in oklch, var(--accent) 25%, var(--border));
+      border-radius: var(--radius-m);
+      padding: 12px 14px;
+    }
+    .summary-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.85rem;
+      padding: 3px 0;
+    }
+    .summary-row.total {
+      font-size: 1rem;
+      font-weight: 700;
+      margin-top: 6px;
+      padding-top: 8px;
+      border-top: 1px solid color-mix(in oklch, var(--accent) 25%, var(--border));
+      color: var(--accent);
+    }
+
+    /* ── Action buttons ── */
+    .actions { display: flex; flex-direction: column; gap: 8px; }
+    .btn {
+      padding: 10px 16px;
+      border: none;
+      border-radius: var(--radius-m);
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 120ms, transform 80ms;
+      font-family: inherit;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+    .btn:active { transform: scale(0.98); }
+    .btn-primary {
+      background: var(--accent);
+      color: #fff;
+    }
+    .btn-primary:hover { background: var(--accent-h); }
+    .btn-secondary {
+      background: var(--raised);
+      color: var(--body);
+      border: 1px solid var(--border);
+    }
+    .btn-secondary:hover { background: var(--border); }
+    .btn-outline-danger {
+      background: none;
+      color: var(--danger);
+      border: 1px solid color-mix(in oklch, var(--danger) 40%, var(--border));
+    }
+    .btn-outline-danger:hover {
+      background: color-mix(in oklch, var(--danger) 8%, var(--surface));
+    }
+
+    /* ── Keyboard hint ── */
+    .key-hint {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+    .key-badge {
+      background: var(--raised);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-s);
+      padding: 2px 8px;
+      font-size: 0.75rem;
+      color: var(--muted);
+      font-family: monospace;
+    }
+
+    /* ── Toast ── */
+    #toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%) translateY(80px);
+      background: var(--body);
+      color: var(--surface);
+      padding: 10px 20px;
+      border-radius: var(--radius-m);
+      font-size: 0.88rem;
+      opacity: 0;
+      transition: transform 220ms, opacity 220ms;
+      z-index: 9999;
+      pointer-events: none;
+      max-width: 360px;
+      text-align: center;
+    }
+    #toast.show {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+    }
+    #toast.success { background: var(--accent); }
+    #toast.error { background: var(--danger); }
+
+    /* ── Print receipt ── */
+    @media print {
+      body * { visibility: hidden; }
+      #receipt, #receipt * { visibility: visible; }
+      #receipt {
+        position: fixed; inset: 0;
+        background: white; color: black;
+        padding: 24px; font-size: 12px;
+        direction: rtl;
+      }
+    }
+
+    @media (max-width: 768px) {
+      .page-wrap {
+        grid-template-columns: 1fr;
+      }
+      .side-col { order: -1; }
+    }
+  </style>
+</head>
+<body>
+
+<div id="receipt" style="display:none"></div>
+<div id="toast"></div>
+
+<div class="page-wrap">
+
+  <!-- Header -->
+  <header>
+    <h1>📦 فاکتور خرید جدید</h1>
+    <span class="badge">B-{{ today|date:"Y" }}-####</span>
+    <a href="{% url 'faktor:buy-list' %}" style="color:var(--muted);text-decoration:none;font-size:0.85rem;">← لیست خریدها</a>
+  </header>
+
+  <!-- Main: cart -->
+  <div class="main-col">
+    <div class="card">
+      <div class="card-header">اقلام فاکتور</div>
+      <div class="cart-wrap">
+        <table id="cartTable">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>نام کالا</th>
+              <th>بارکد</th>
+              <th>موجودی فعلی</th>
+              <th>قیمت خرید (ریال)</th>
+              <th>تعداد</th>
+              <th>جمع</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="cartBody">
+            <tr id="emptyRow">
+              <td colspan="8">
+                <div class="empty-cart">کالایی اضافه نشده — از جستجو یا اسکنر استفاده کنید</div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sidebar -->
+  <div class="side-col">
+
+    <!-- Search -->
+    <div class="card">
+      <div class="card-header">جستجوی کالا</div>
+      <div style="padding:12px;" class="search-box">
+        <input type="text" id="searchInput" placeholder="نام، بارکد یا دسته‌بندی..." autocomplete="off">
+        <div class="results-box" id="resultsBox"></div>
+      </div>
+    </div>
+
+    <!-- Supplier + description -->
+    <div class="card">
+      <div class="card-header">اطلاعات تامین‌کننده</div>
+      <div style="padding:12px;display:flex;flex-direction:column;gap:10px;">
+        <div class="field">
+          <label for="supplierInput">تامین‌کننده</label>
+          <input type="text" id="supplierInput" placeholder="نام تامین‌کننده (اختیاری)"
+                 value="{{ supplier_value|default:'' }}">
+        </div>
+        <div class="field">
+          <label for="descInput">توضیحات</label>
+          <textarea id="descInput" placeholder="توضیحات فاکتور...">{{ description_value|default:'' }}</textarea>
+        </div>
+      </div>
+    </div>
+
+    <!-- Summary -->
+    <div class="summary">
+      <div class="summary-row">
+        <span>تعداد اقلام</span>
+        <span id="summaryCount">۰</span>
+      </div>
+      <div class="summary-row">
+        <span>تعداد کل کالا</span>
+        <span id="summaryQty">۰</span>
+      </div>
+      <div class="summary-row total">
+        <span>مجموع پرداختی</span>
+        <span id="summaryTotal">۰ ریال</span>
+      </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="actions">
+      <div class="key-hint">
+        <span class="key-badge">F7</span><span style="font-size:0.78rem;color:var(--muted)">ذخیره</span>
+        <span class="key-badge">F8</span><span style="font-size:0.78rem;color:var(--muted)">ذخیره و بستن</span>
+        <span class="key-badge">F9</span><span style="font-size:0.78rem;color:var(--muted)">ذخیره و پرینت</span>
+      </div>
+      <button class="btn btn-primary" onclick="saveFaktor('save')" id="btnF7">
+        💾 ذخیره (F7)
+      </button>
+      <button class="btn btn-secondary" onclick="saveFaktor('close')" id="btnF8">
+        ✅ ذخیره و بستن (F8)
+      </button>
+      <button class="btn btn-secondary" onclick="saveFaktor('print')" id="btnF9">
+        🖨️ ذخیره و چاپ (F9)
+      </button>
+      <button class="btn btn-outline-danger" onclick="clearCart()">
+        🗑️ پاک کردن سبد
+      </button>
+    </div>
+
+    <!-- Add new product link -->
+    <div style="text-align:center;padding:4px 0;">
+      <a href="{% url 'product:c-product' %}" style="font-size:0.82rem;color:var(--accent);text-decoration:none;">
+        ＋ افزودن کالای جدید به سیستم
+      </a>
+    </div>
+
+  </div><!-- /side-col -->
+</div><!-- /page-wrap -->
+
+<script>
+// ── State ──────────────────────────────────────────────────────────────
+let cart = [];   // [{product_id, name, serial_number, count, price_for_company, quantity}]
+
+// Restore from server on validation error
+{% if cart_json %}
+try {
+  const saved = JSON.parse('{{ cart_json|escapejs }}');
+  if (Array.isArray(saved)) cart = saved;
+  renderCart();
+} catch(e) {}
+{% endif %}
+
+// ── Search ─────────────────────────────────────────────────────────────
+const searchInput = document.getElementById('searchInput');
+const resultsBox  = document.getElementById('resultsBox');
+let searchTimer;
+
+searchInput.addEventListener('input', () => {
+  clearTimeout(searchTimer);
+  const q = searchInput.value.trim();
+  if (q.length < 1) { resultsBox.classList.remove('open'); return; }
+  searchTimer = setTimeout(() => doSearch(q), 220);
+});
+
+searchInput.addEventListener('keydown', e => {
+  if (e.key === 'Escape') { resultsBox.classList.remove('open'); searchInput.value = ''; }
+});
+
+document.addEventListener('click', e => {
+  if (!e.target.closest('.search-box')) resultsBox.classList.remove('open');
+});
+
+function doSearch(q) {
+  fetch(`{% url 'faktor:search-products' %}?q=${encodeURIComponent(q)}`)
+    .then(r => r.json())
+    .then(data => {
+      resultsBox.innerHTML = '';
+      if (!data.results || data.results.length === 0) {
+        resultsBox.innerHTML = `
+          <div class="result-item" style="cursor:default;color:var(--muted);">
+            کالایی یافت نشد —
+            <a href="{% url 'product:c-product' %}" style="color:var(--accent);">افزودن کالا</a>
+          </div>`;
+        resultsBox.classList.add('open');
+lt;color:var(--muted);">
+            کالایی یافت نشد —
+            <a href="{% url 'product:c-product' %}" style="color:var(--accent);">افزودن کالا</a>
+          </div>`;
+        resultsBox.classList.add('open');
+    موجودی: ${p.count} |
+            قیمت خرید: ${Number(p.price_for_company).toLocaleString('fa')} ریال
+          </div>`;
+        div.addEventListener('click', () => {
+          addToCart(p);
+          searchInput.value = '';
+          resultsBox.classList.remove('open');
+        });
+        resultsBox.appendChild(div);
+      });
+      resultsBox.classList.add('open');
+    })
+    .catch(() => showToast('خطا در جستجو', 'error'));
+}
+
+// ── Cart operations ────────────────────────────────────────────────────
+function addToCart(product) {
+  const existing = cart.find(x => x.product_id === product.id);
+  if (existing) {
+    existing.quantity += 1;
+  } else {
+    cart.push({
+      product_id: product.id,
+      name: product.name,
+      serial_number: product.serial_number,
+      count: product.count,
+      price_for_company: product.price_for_company,
+      quantity: 1,
+    });
+  }
+  renderCart();
+  showToast(`«${product.name}» اضافه شد`, 'success');
+}
+
+function changeQty(productId, delta) {
+  const item = cart.find(x => x.product_id === productId);
+  if (!item) return;
+  item.quantity = Math.max(1, item.quantity + delta);
+  renderCart();
+}
+
+function removeFromCart(productId) {
+  cart = cart.filter(x => x.product_id !== productId);
+  renderCart();
+}
+
+function clearCart() {
+  if (cart.length === 0) return;
+  if (confirm('سبد خرید پاک شود؟')) {
+    cart = [];
+    renderCart();
+  }
+}
+
+// ── Render ─────────────────────────────────────────────────────────────
+function renderCart() {
+  const tbody = document.getElementById('cartBody');
+  if (cart.length === 0) {
+    tbody.innerHTML = `<tr id="emptyRow"><td colspan="8">
+      <div class="empty-cart">کالایی اضافه نشده — از جستجو یا اسکنر استفاده کنید</div>
+    </td></tr>`;
+    updateSummary(0, 0, 0);
+    return;
+  }
+
+  let totalItems = 0, totalQty = 0, totalPrice = 0;
+  tbody.innerHTML = cart.map((item, i) => {
+    const lineTotal = parseFloat(item.price_for_company) * item.quantity;
+    totalItems++;
+    totalQty += item.quantity;
+    totalPrice += lineTotal;
+    return `<tr>
+      <td>${i + 1}</td>
+      <td>${item.name}</td>
+      <td style="font-family:monospace;font-size:0.82rem;">${item.serial_number || '—'}</td>
+      <td style="color:var(--muted)">${item.count}</td>
+      <td>${Number(item.price_for_company).toLocaleString('fa')}</td>
+      <td>
+        <div class="qty-ctrl">
+          <button onclick="changeQty(${item.product_id}, -1)" aria-label="کم کردن">−</button>
+          <span>${item.quantity}</span>
+          <button onclick="changeQty(${item.product_id}, 1)" aria-label="زیاد کردن">+</button>
+        </div>
+      </td>
+      <td>${lineTotal.toLocaleString('fa')} ریال</td>
+      <td><button class="btn-remove" onclick="removeFromCart(${item.product_id})" aria-label="حذف">✕</button></td>
+    </tr>`;
+  }).join('');
+
+  updateSummary(totalItems, totalQty, totalPrice);
+}
+
+function updateSummary(items, qty, total) {
+  document.getElementById('summaryCount').textContent = items.toLocaleString('fa');
+  document.getElementById('summaryQty').textContent   = qty.toLocaleString('fa');
+  document.getElementById('summaryTotal').textContent = total.toLocaleString('fa') + ' ریال';
+}
+
+// ── Save ───────────────────────────────────────────────────────────────
+function saveFaktor(mode) {
+  if (cart.length === 0) {
+    showToast('سبد خرید خالی است', 'error'); return;
+  }
+
+  const cartPayload = cart.map(x => ({ product_id: x.product_id, quantity: x.quantity }));
+  const formData = new FormData();
+  formData.append('cart_json', JSON.stringify(cartPayload));
+  formData.append('supplier', document.getElementById('supplierInput').value.trim());
+  formData.append('description', document.getElementById('descInput').value.trim());
+  formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+
+  if (mode === 'print') formData.append('respond_json', '1');
+
+  setButtons(true);
+
+  fetch('{% url "faktor:buy-create" %}', { method: 'POST', body: formData })
+    .then(r => {
+      if (mode === 'print') return r.json();
+      return r.ok ? { success: true, _redirect: true } : r.json();
+    })
+    .then(data => {
+      if (mode === 'print' && data.success) {
+        printReceipt(data);
+        cart = [];
+        renderCart();
+        showToast(`فاکتور ${data.number} ثبت شد`, 'success');
+      } else if (data._redirect || data.success) {
+        if (mode === 'close') {
+          window.location.href = '{% url "faktor:buy-list" %}';
+        } else {
+          cart = [];
+          renderCart();
+          showToast('فاکتور خرید ثبت شد ✓', 'success');
+        }
+      } else {
+        const errs = data.errors || ['خطا در ثبت فاکتور'];
+        errs.forEach(e => showToast(e, 'error'));
+      }
+    })
+    .catch(() => showToast('خطا در ارتباط با سرور', 'error'))
+    .finally(() => setButtons(false));
+}
+
+function setButtons(disabled) {
+  ['btnF7', 'btnF8', 'btnF9'].forEach(id => {
+    document.getElementById(id).disabled = disabled;
+  });
+}
+
+// ── Print receipt ──────────────────────────────────────────────────────
+function printReceipt(data) {
+  const rows = data.items.map(item => `
+    <tr>
+      <td>${item.name}</td>
+      <td>${item.serial_number || '—'}</td>
+      <td>${item.quantity}</td>
+      <td>${Number(item.unit_price).toLocaleString('fa')}</td>
+      <td>${Number(item.total_price).toLocaleString('fa')}</td>
+    </tr>`).join('');
+
+  document.getElementById('receipt').innerHTML = `
+    <div style="text-align:center;margin-bottom:16px;">
+      <h2>فاکتور خرید</h2>
+      <p>شماره: ${data.number} | تاریخ: ${data.date}</p>
+      <p>تامین‌کننده: ${data.supplier || '—'}</p>
+    </div>
+    <table border="1" cellpadding="6" style="width:100%;border-collapse:collapse;">
+      <thead><tr><th>کالا</th><th>بارکد</th><th>تعداد</th><th>قیمت واحد</th><th>جمع</th></tr></thead>
+      <tbody>${rows}</tbody>
+      <tfoot><tr><td colspan="4" style="text-align:left;font-weight:bold;">مجموع</td>
+        <td style="font-weight:bold;">${Number(data.total).toLocaleString('fa')} ریال</td></tr></tfoot>
+    </table>`;
+
+  document.getElementById('receipt').style.display = 'block';
+  window.print();
+  document.getElementById('receipt').style.display = 'none';
+}
+
+// ── Keyboard shortcuts ─────────────────────────────────────────────────
+document.addEventListener('keydown', e => {
+  if (e.key === 'F7') { e.preventDefault(); saveFaktor('save'); }
+  if (e.key === 'F8') { e.preventDefault(); saveFaktor('close'); }
+  if (e.key === 'F9') { e.preventDefault(); saveFaktor('print'); }
+});
+
+// ── Toast ──────────────────────────────────────────────────────────────
+let toastTimer;
+function showToast(msg, type = '') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'show ' + type;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { t.className = ''; }, 3000);
+}
+
+// Initial render
+renderCart();
+</script>
+</body>

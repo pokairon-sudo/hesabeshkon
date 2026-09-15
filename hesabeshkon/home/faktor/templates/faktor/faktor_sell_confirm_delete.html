@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+
+{% block title %}حذف فاکتور – Duck.ai{% endblock title %}
+
+{% block content %}
+<div dir="rtl" class="max-w-md mx-auto glass-panel p-8 mt-10">
+    <h2 class="text-2xl font-bold mb-4 text-amber-100">این فاکتور حذف شود؟</h2>
+    <p class="mb-6 text-white/70">
+        فاکتور <strong class="text-white">{{ object.number }}</strong>
+        {% if object.customer %}برای <strong class="text-white">{{ object.customer }}</strong>{% endif %}
+        به همراه تمام اقلامش برای همیشه حذف می‌شود. این عمل قابل بازگشت نیست.
+    </p>
+    <form method="post" class="flex gap-2">
+        {% csrf_token %}
+        <button type="submit" class="bg-red-500/80 hover:bg-red-500 text-white font-semibold py-2 px-4 rounded-lg transition">
+            بله، حذف شود
+        </button>
+        <a href="{% url 'faktor:sell-list' %}"
+           class="bg-white/10 hover:bg-white/20 border border-white/20 text-white/80 py-2 px-4 rounded-lg transition">
+            انصراف
+        </a>
+    </form>
+</div>
+{% endblock content %}

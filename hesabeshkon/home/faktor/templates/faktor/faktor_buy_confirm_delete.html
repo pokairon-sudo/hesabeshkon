@@ -1,0 +1,57 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <title>حذف فاکتور خرید</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: oklch(97% 0.004 260);
+      --surface: oklch(100% 0 0);
+      --border: oklch(88% 0.008 260);
+      --body: oklch(18% 0.015 260);
+      --accent: oklch(52% 0.18 150);
+      --danger: oklch(52% 0.20 25);
+      --radius-l: 14px;
+      --shadow: 0 4px 16px oklch(0% 0 0 / 12%);
+    }
+    body {
+      font-family: Vazirmatn, Tahoma, sans-serif;
+      background: var(--bg); color: var(--body);
+      min-height: 100vh; display: grid; place-items: center;
+      font-size: 14px;
+    }
+    .card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius-l); box-shadow: var(--shadow);
+      padding: 32px 28px; max-width: 420px; width: 100%;
+      text-align: center;
+    }
+    .icon { font-size: 2.5rem; margin-bottom: 12px; }
+    h2 { font-size: 1.1rem; margin-bottom: 8px; }
+    p { color: oklch(55% 0.02 260); margin-bottom: 24px; font-size: 0.9rem; }
+    .actions { display: flex; gap: 10px; justify-content: center; }
+    .btn {
+      padding: 9px 20px; border: none; border-radius: 8px;
+      font-size: 0.9rem; font-weight: 600; cursor: pointer;
+      font-family: inherit; text-decoration: none;
+    }
+    .btn-danger { background: var(--danger); color: #fff; }
+    .btn-cancel { background: oklch(94% 0.006 260); color: var(--body); }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="icon">⚠️</div>
+    <h2>حذف فاکتور خرید</h2>
+    <p>فاکتور <strong>{{ object.number }}</strong> حذف شود؟<br>این عمل قابل بازگشت نیست.</p>
+    <div class="actions">
+      <form method="post">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-danger">بله، حذف شود</button>
+      </form>
+      <a href="{% url 'faktor:buy-list' %}" class="btn btn-cancel">انصراف</a>
+    </div>
+  </div>
+</body>

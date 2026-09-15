@@ -1,0 +1,365 @@
+{% extends "base.html" %}
+{% load humanize %}
+
+{% block title %}داشبورد گزارشات{% endblock %}
+
+{% block content %}
+<div dir="rtl" class="min-h-screen bg-stone-950 text-stone-100 p-4 md:p-8 font-sans">
+
+  <!-- ── هدر ──────────────────────────────────────────────────── -->
+  <div class="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+    <div>
+      <h1 class="text-2xl font-bold text-amber-400 tracking-tight">داشبورد فروش</h1>
+      <p class="text-stone-400 text-sm mt-1">بهای تمام‌شده تقریبیه — بر اساس قیمت فعلی محصول</p>
+    </div>
+    <span class="text-xs text-stone-500 bg-stone-900 border border-stone-800 rounded-lg px-3 py-1.5 self-start sm:self-auto">
+      آپدیت: همین لحظه
+    </span>
+  </div>
+
+  <!-- ── KPI ردیف اول (۳ کارت) ─────────────────────────────────── -->
+  <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+
+    <div class="rounded-2xl bg-stone-900 border border-stone-800 p-5 flex flex-col gap-1">
+      <span class="text-xs text-stone-400 uppercase tracking-widest">مجموع فروش</span>
+      <span class="text-3xl font-bold text-sky-400 tabular-nums">
+        {{ total_revenue|intcomma }}
+      </span>
+      <span class="text-xs text-stone-500">تومان</span>
+    </div>
+
+    <div class="rounded-2xl bg-stone-900 border border-stone-800 p-5 flex flex-col gap-1">
+      <span class="text-xs text-stone-400 uppercase tracking-widest">بهای تمام‌شده (تقریبی)</span>
+      <span class="text-3xl font-bold text-stone-300 tabular-nums">
+        {{ total_cost|intcomma }}
+      </span>
+      <span class="text-xs text-stone-500">تومان</span>
+    </div>
+
+    <div class="rounded-2xl bg-stone-900 border border-stone-800 p-5 flex flex-col gap-1">
+      <span class="text-xs text-stone-400 uppercase tracking-widest">سود ناخالص (تقریبی)</span>
+      <span class="text-3xl font-bold {% if total_profit >= 0 %}text-emerald-400{% else %}text-rose-400{% endif %} tabular-nums">
+        {{ total_profit|intcomma }}
+      </span>
+      <span class="text-xs text-stone-500">تومان</span>
+    </div>
+
+  </div>
+
+  <!-- ── KPI ردیف دوم (۳ کارت کوچک) ───────────────────────────── -->
+  <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+
+    <div class="rounded-xl bg-stone-900/60 border border-stone-800 p-4 flex items-center gap-4">
+      <div class="w-10 h-10 rounded-lg bg-amber-500/10 flex items-center justify-center text-amber-400 text-lg shrink-0">
+        📄
+      </div>
+      <div>
+        <div class="text-xs text-stone-400">تعداد فاکتور</div>
+        <div class="text-xl font-bold text-amber-400 tabular-nums">{{ total_invoices }}</div>
+      </div>
+    </div>
+
+    <div class="rounded-xl bg-stone-900/60 border border-stone-800 p-4 flex items-center gap-4">
+      <div class="w-10 h-10 rounded-lg bg-sky-500/10 flex items-center justify-center text-sky-400 text-lg shrink-0">
+        📦
+      </div>
+      <div>
+        <div class="text-xs text-stone-400">آیتم فروخته‌شده</div>
+        <div class="text-xl font-bold text-sky-400 tabular-nums">{{ total_items_sold }}</div>
+      </div>
+    </div>
+
+    <div class="rounded-xl bg-stone-900/60 border border-stone-800 p-4 flex items-center gap-4">
+      <div class="w-10 h-10 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-400 text-lg shrink-0">
+        📈
+      </div>
+      <div>
+        <div class="text-xs text-stone-400">حاشیه سود</div>
+        <div class="text-xl font-bold text-emerald-400 tabular-nums">{{ profit_margin_pct }}٪</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ── نمودار ردیف اول: فروش روزانه + ماهانه ─────────────────── -->
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+
+    <div class="rounded-2xl bg-stone-900 border border-stone-800 p-5">
+      <h2 class="text-sm font-semibold text-stone-300 mb-4">فروش روزانه — ۳۰ روز اخیر</h2>
+      <div class="relative h-52">
+        <canvas id="dailySalesChart"></canvas>
+      </div>
+    </div>
+
+    <div class="rounded-2xl bg-stone-900 border border-stone-800 p-5">
+      <h2 class="text-sm font-semibold text-stone-300 mb-4">فروش ماهانه</h2>
+      <div class="relative h-52">
+        <canvas id="monthlySalesChart"></canvas>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ── نمودار ردیف دوم: پرفروش + دسته‌بندی ───────────────────── -->
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+
+    <div class="rounded-2xl bg-stone-900 border border-stone-800 p-5">
+      <h2 class="text-sm font-semibold text-stone-300 mb-4">پرفروش‌ترین کالاها</h2>
+      <div class="relative h-64">
+        <canvas id="topProductsChart"></canvas>
+      </div>
+    </div>
+
+    <div class="rounded-2xl bg-stone-900 border border-stone-800 p-5">
+      <h2 class="text-sm font-semibold text-stone-300 mb-4">توزیع فروش بر اساس دسته‌بندی</h2>
+      <div class="relative h-64 flex items-center justify-center">
+        <canvas id="tagChart"></canvas>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ── نمودار ردیف سوم: حاشیه سود محصولات ───────────────────── -->
+  <div class="rounded-2xl bg-stone-900 border border-stone-800 p-5 mb-8">
+    <h2 class="text-sm font-semibold text-stone-300 mb-4">میانگین حاشیه سود محصولات (٪)</h2>
+    <div class="relative h-52">
+      <canvas id="marginChart"></canvas>
+    </div>
+  </div>
+
+  <!-- ── جدول آخرین فاکتورها ──────────────────────────────────── -->
+  <div class="rounded-2xl bg-stone-900 border border-stone-800 p-5 mb-8">
+    <h2 class="text-sm font-semibold text-stone-300 mb-4">آخرین فاکتورهای فروش</h2>
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm text-right">
+        <thead>
+          <tr class="text-stone-500 text-xs border-b border-stone-800">
+            <th class="py-2 px-3 font-medium">شماره</th>
+            <th class="py-2 px-3 font-medium">تاریخ</th>
+            <th class="py-2 px-3 font-medium">مشتری</th>
+            <th class="py-2 px-3 font-medium text-left tabular-nums">مبلغ (تومان)</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-stone-800/50">
+          {% for inv in recent_invoices %}
+          <tr class="hover:bg-stone-800/40 transition-colors">
+            <td class="py-2.5 px-3 text-amber-400 font-mono tabular-nums">{{ inv.invoice_number }}</td>
+            <td class="py-2.5 px-3 text-stone-400 tabular-nums">{{ inv.date }}</td>
+            <td class="py-2.5 px-3 text-stone-300">{{ inv.customer|default:"—" }}</td>
+            <td class="py-2.5 px-3 text-left tabular-nums text-sky-400">
+              {% with total=inv.faktoritem_set.all %}
+                —
+              {% endwith %}
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="4" class="py-6 text-center text-stone-500">هنوز فاکتوری ثبت نشده</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<!-- ── داده‌های JSON ──────────────────────────────────────────── -->
+{{ daily_labels|json_script:"daily-labels" }}
+{{ daily_values|json_script:"daily-values" }}
+{{ monthly_labels|json_script:"monthly-labels" }}
+{{ monthly_values|json_script:"monthly-values" }}
+{{ top_product_labels|json_script:"top-product-labels" }}
+{{ top_product_values|json_script:"top-product-values" }}
+{{ top_product_qty|json_script:"top-product-qty" }}
+{{ tag_labels|json_script:"tag-labels" }}
+{{ tag_values|json_script:"tag-values" }}
+{{ margin_labels|json_script:"margin-labels" }}
+{{ margin_values|json_script:"margin-values" }}
+
+<!-- ── Chart.js ─────────────────────────────────────────────── -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<script>
+(function () {
+  // ── helpers ──────────────────────────────────────────────────
+  function getJSON(id) {
+    return JSON.parse(document.getElementById(id).textContent);
+  }
+  function fmtNum(n) {
+    return Number(n).toLocaleString('fa-IR');
+  }
+
+  const GRID   = 'rgba(255,255,255,0.05)';
+  const TICK   = '#78716c'; // stone-500
+  const BASE   = { responsive: true, maintainAspectRatio: false };
+
+  const tooltipDefaults = {
+    backgroundColor: '#1c1917',
+    borderColor: '#44403c',
+    borderWidth: 1,
+    titleColor: '#e7e5e4',
+    bodyColor: '#a8a29e',
+    padding: 10,
+    rtl: true,
+    callbacks: {
+      label: ctx => ' ' + fmtNum(ctx.raw) + ' تومان'
+    }
+  };
+
+  // ── ۱. فروش روزانه (line) ─────────────────────────────────────
+  new Chart(document.getElementById('dailySalesChart'), {
+    type: 'line',
+    data: {
+      labels: getJSON('daily-labels'),
+      datasets: [{
+        data: getJSON('daily-values'),
+        borderColor: '#38bdf8',         // sky-400
+        backgroundColor: 'rgba(56,189,248,0.08)',
+        pointBackgroundColor: '#38bdf8',
+        pointRadius: 3,
+        pointHoverRadius: 5,
+        tension: 0.35,
+        fill: true,
+        borderWidth: 2,
+      }]
+    },
+    options: {
+      ...BASE,
+      plugins: { legend: { display: false }, tooltip: tooltipDefaults },
+      scales: {
+        x: { ticks: { color: TICK, maxTicksLimit: 8, font: { size: 10 } },
+             grid: { color: GRID } },
+        y: { ticks: { color: TICK, callback: v => fmtNum(v), font: { size: 10 } },
+             grid: { color: GRID } }
+      }
+    }
+  });
+
+  // ── ۲. فروش ماهانه (bar) ─────────────────────────────────────
+  new Chart(document.getElementById('monthlySalesChart'), {
+    type: 'bar',
+    data: {
+      labels: getJSON('monthly-labels'),
+      datasets: [{
+        data: getJSON('monthly-values'),
+        backgroundColor: 'rgba(251,191,36,0.7)',  // amber-400
+        borderColor: '#fbbf24',
+        borderWidth: 1,
+        borderRadius: 6,
+        borderSkipped: false,
+      }]
+    },
+    options: {
+      ...BASE,
+      plugins: { legend: { display: false }, tooltip: tooltipDefaults },
+      scales: {
+        x: { ticks: { color: TICK, font: { size: 10 } }, grid: { color: GRID } },
+        y: { ticks: { color: TICK, callback: v => fmtNum(v), font: { size: 10 } },
+             grid: { color: GRID } }
+      }
+    }
+  });
+
+  // ── ۳. پرفروش‌ترین محصولات (horizontal bar) ──────────────────
+  new Chart(document.getElementById('topProductsChart'), {
+    type: 'bar',
+    data: {
+      labels: getJSON('top-product-labels'),
+      datasets: [{
+        label: 'فروش (تومان)',
+        data: getJSON('top-product-values'),
+        backgroundColor: 'rgba(52,211,153,0.7)',  // emerald-400
+        borderColor: '#34d399',
+        borderWidth: 1,
+        borderRadius: 4,
+        borderSkipped: false,
+      }]
+    },
+    options: {
+      ...BASE,
+      indexAxis: 'y',
+      plugins: { legend: { display: false }, tooltip: tooltipDefaults },
+      scales: {
+        x: { ticks: { color: TICK, callback: v => fmtNum(v), font: { size: 10 } },
+             grid: { color: GRID } },
+        y: { ticks: { color: TICK, font: { size: 10 } }, grid: { display: false } }
+      }
+    }
+  });
+
+  // ── ۴. توزیع دسته‌بندی (doughnut) ────────────────────────────
+  const DONUT_COLORS = [
+    '#fbbf24','#38bdf8','#34d399','#f87171',
+    '#a78bfa','#fb923c','#e879f9','#94a3b8'
+  ];
+  new Chart(document.getElementById('tagChart'), {
+    type: 'doughnut',
+    data: {
+      labels: getJSON('tag-labels'),
+      datasets: [{
+        data: getJSON('tag-values'),
+        backgroundColor: DONUT_COLORS,
+        borderColor: '#1c1917',
+        borderWidth: 3,
+        hoverOffset: 8,
+      }]
+    },
+    options: {
+      ...BASE,
+      cutout: '62%',
+      plugins: {
+        legend: {
+          display: true,
+          position: 'right',
+          rtl: true,
+          labels: { color: '#a8a29e', font: { size: 11 }, boxWidth: 12, padding: 10 }
+        },
+        tooltip: {
+          ...tooltipDefaults,
+          callbacks: { label: ctx => ' ' + fmtNum(ctx.raw) + ' تومان' }
+        }
+      }
+    }
+  });
+
+  // ── ۵. حاشیه سود (bar) ───────────────────────────────────────
+  const mVals = getJSON('margin-values');
+  new Chart(document.getElementById('marginChart'), {
+    type: 'bar',
+    data: {
+      labels: getJSON('margin-labels'),
+      datasets: [{
+        data: mVals,
+        backgroundColor: mVals.map(v =>
+          v >= 20  ? 'rgba(52,211,153,0.75)' :
+          v >= 10  ? 'rgba(251,191,36,0.75)' :
+                     'rgba(248,113,113,0.75)'
+        ),
+        borderWidth: 0,
+        borderRadius: 5,
+        borderSkipped: false,
+      }]
+    },
+    options: {
+      ...BASE,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          ...tooltipDefaults,
+          callbacks: { label: ctx => ' ' + ctx.raw + '٪ حاشیه سود' }
+        }
+      },
+      scales: {
+        x: { ticks: { color: TICK, font: { size: 10 } }, grid: { display: false } },
+        y: {
+          ticks: { color: TICK, callback: v => v + '٪', font: { size: 10 } },
+          grid: { color: GRID }
+        }
+      }
+    }
+  });
+
+})();
+</script>
+{% endblock %}
+

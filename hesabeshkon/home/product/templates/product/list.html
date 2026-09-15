@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+
+{% block title %}محصولات – Duck.ai{% endblock title %}
+
+{% block content %}
+<div dir="rtl" class="max-w-5xl mx-auto">
+    <div class="flex justify-between items-center mb-4">
+        <h1 class="text-2xl font-bold text-amber-100">محصولات</h1>
+        <a href="{% url 'product:c-product' %}" class="gold-btn py-2 px-4 rounded-lg">
+            + افزودن محصول جدید
+        </a>
+    </div>
+
+    <form method="get" class="flex items-center gap-2 mb-6">
+        <input type="text" name="q" placeholder="جستجو…" value="{{ query }}"
+               class="!bg-white/95 !text-stone-800 rounded-lg w-64">
+        <select name="field" class="!bg-white/95 !text-stone-800 rounded-lg !w-auto">
+            <option value="name" {% if filter_by == "name" %}selected{% endif %}>نام</option>
+            <option value="serial" {% if filter_by == "serial" %}selected{% endif %}>شماره سریال</option>
+        </select>
+        <button type="submit" class="gold-btn py-2 px-3 rounded-lg text-sm">جستجو</button>
+        {% if query %}
+        <a href="{% url 'product:l-product' %}" class="text-white/60 hover:text-white text-sm underline">پاک کردن</a>
+        {% endif %}
+    </form>
+
+    {% if products %}
+    <div class="glass-panel-light overflow-x-auto">
+        <table class="min-w-full text-sm text-stone-800">
+            <thead class="bg-stone-900/5">
+                <tr>
+                    <th class="px-4 py-3 text-right font-semibold">نام</th>
+                    <th class="px-4 py-3 text-right font-semibold">تگ</th>
+                    <th class="px-4 py-3 text-right font-semibold">سریال</th>
+                    <th class="px-4 py-3 text-right font-semibold">قیمت شرکت</th>
+                    <th class="px-4 py-3 text-right font-semibold">قیمت مشتری</th>
+                    <th class="px-4 py-3 text-right font-semibold">موجودی</th>
+                    <th class="px-4 py-3 text-center font-semibold">تخفیف</th>
+                    <th class="px-4 py-3 text-center font-semibold">قیمت نهایی</th>
+                    <th class="px-4 py-3 text-center font-semibold">عملیات</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for p in products %}
+                <tr class="border-t border-stone-900/5 hover:bg-amber-500/5 transition">
+                    <td class="px-4 py-3">{{ p.name }}</td>
+                    <td class="px-4 py-3">{{ p.tag }}</td>
+                    <td class="px-4 py-3 font-mono">{{ p.serial_number }}</td>
+                    <td class="px-4 py-3">{{ p.price_for_company }}</td>
+                    <td class="px-4 py-3">{{ p.price_for_customer }}</td>
+                    <td class="px-4 py-3">{{ p.count }}</td>
+                    <td class="px-4 py-3 text-center">
+                        {% if p.offer_type == "percent" %}{{ p.offer_value }}٪{% else %}{{ p.offer_value }}{% endif %}
+                    </td>
+                    <td class="px-4 py-3 text-center font-semibold text-amber-700">
+                        {{ p.final_price_for_customer|floatformat:2 }}
+                    </td>
+                    <td class="px-4 py-3 text-center space-x-2 space-x-reverse">
+                        <a href="{% url 'product:e-product' p.id %}" class="text-blue-600 hover:underline">ویرایش</a>
+                        <form action="{% url 'product:d-product' p.id %}" method="post" class="inline"
+                              onsubmit="return confirm('این محصول حذف شود؟');">
+                            {% csrf_token %}
+                            <button type="submit" class="text-red-600 hover:underline bg-transparent border-0 p-0">حذف</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="glass-panel-light p-8 text-center text-stone-500">محصولی یافت نشد.</div>
+    {% endif %}
+</div>
+{% endblock content %}
