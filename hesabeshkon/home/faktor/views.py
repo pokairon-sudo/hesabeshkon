@@ -1,4 +1,3 @@
-
 # faktor/views.py
 import json
 from decimal import Decimal, InvalidOperation
@@ -17,7 +16,7 @@ from django.views.generic import (
 from django.http import JsonResponse
 from django.utils import timezone
 from django.contrib.auth.mixins import LoginRequiredMixin
-from accounts.mixins import StaffGroupRequiredMixin  # T2.1: faktor/invoicing is staff-only
+from accounts.mixins import StaffGroupRequiredMixin
 from django.contrib import messages
 from django.db.models import Sum, F, DecimalField
 from django.db.models.functions import Coalesce
@@ -30,11 +29,10 @@ from product.models import Product
 
 class BuyEnabledRequiredMixin:
     """
-    #4: buy invoices are temporarily disabled. Every buy view checks this
-    first (before the staff-group check even runs), so a disabled feature
-    fails with a clear message instead of a confusing 403 or a working page
-    nobody's supposed to use yet. Flip settings.FAKTOR_BUY_ENABLED back to
-    True to restore access — nothing else needs to change.
+    Buy invoices are temporarily disabled. Every buy view checks this
+    first so a disabled feature fails with a clear message instead of a
+    confusing 403. Flip settings.FAKTOR_BUY_ENABLED back to True to
+    restore access — nothing else needs to change.
     """
 
     def dispatch(self, request, *args, **kwargs):
@@ -45,13 +43,12 @@ class BuyEnabledRequiredMixin:
 
 
 # ----------------------------------------------------------------------
-# SEARCH (shared by sell + buy) — #3/#6
+# SEARCH (shared by sell + buy)
 # ----------------------------------------------------------------------
 class SearchProductsView(StaffGroupRequiredMixin, View):
     """
-    Live product search by barcode (serial_number), name, or tag — used by
-    the invoice item-entry panel so staff aren't limited to scanning an
-    exact barcode. Returns JSON; the invoice-form JS renders a dropdown.
+    Live product search by barcode (serial_number), name, or tag.
+    Returns JSON; the invoice-form JS renders a dropdown.
     """
 
     def get(self, request):
@@ -85,23 +82,12 @@ class SearchProductsView(StaffGroupRequiredMixin, View):
 # ----------------------------------------------------------------------
 class CreateFaktorSellView(StaffGroupRequiredMixin, View):
     """
-    #1/#2/#3 rework: the previous flow saved an EMPTY FaktorSell row the
-    moment this page was even opened (needed a faktor_id to add items
-    against), then redirected to /edit/<pk>/ to actually build the
-    invoice — meaning junk empty invoices could pile up in the DB just
-    from opening this page, and closing an invoice always bounced through
-    an /edit/ URL.
-
-    Now: nothing touches the database on GET. Scanned items live in a
-    client-side cart (JS) built by looking products up read-only via
-    SearchProductsView. The entire invoice — customer/description + every
-    item — is submitted in ONE POST when F7/F8/F9 is pressed, and is
-    created atomically:
-      - an empty cart is rejected (#2: never saves an empty invoice)
-      - the invoice number is assigned by the model at the moment of that
-        one real save (#1: "auto serial" — nothing to do manually)
-      - success always returns to THIS SAME page, fresh and empty
-        (#3: never redirects to /edit/<pk>/)
+    Nothing touches the database on GET. Scanned items live in a
+    client-side cart (JS). The entire invoice is submitted in ONE POST
+    when F7/F8/F9 is pressed and created atomically:
+      - empty cart is rejected (never saves an empty invoice)
+      - invoice number assigned by the model at save time
+      - success always redirects back to this same page, fresh and empty
     """
     template_name = "faktor/faktor_sell_create.html"
 
@@ -113,11 +99,14 @@ class CreateFaktorSellView(StaffGroupRequiredMixin, View):
         return render(request, self.template_name, context)
 
     def _resolve_cart(self, request):
-        """Parse+validate the posted cart. Returns (resolved, errors) where
-        resolved is a list of (product, quantity) and errors is a list of
-        user-facing strings. Never trusts client-submitted price/name —
-        only product_id and quantity are read from the client; price is
-        always recomputed server-side from the product's current price."""
+        """
+        Parse and validate the posted cart.
+        Returns (resolved, errors) where resolved is a list of
+        (product, quantity) tuples.
+        Never trusts client-submitted price/name — only product_id and
+        quantity are read from the client; price is always recomputed
+        server-side.
+        """
         try:
             cart = json.loads(request.POST.get('cart_json', '[]'))
         except (ValueError, TypeError):
@@ -144,7 +133,8 @@ class CreateFaktorSellView(StaffGroupRequiredMixin, View):
                 continue
             if product.count < qty:
                 errors.append(
-                    f'موجودی «{product.name}» کافی نیست (موجودی فعلی: {product.count}).'
+                    f'موجودی «{product.name}» کافی نیست '
+                    f'(موجودی فعلی: {product.count}).'
                 )
                 continue
             resolved.append((product, qty))
@@ -176,18 +166,34 @@ class CreateFaktorSellView(StaffGroupRequiredMixin, View):
 
         with transaction.atomic():
             faktor = FaktorSell.objects.create(
-                user=request.user, customer=customer, description=description,
+                user=request.user,
+                customer=customer,
+                description=description,
             )
             total = Decimal('0')
             items_payload = []
             for product, qty in resolved:
                 unit_price = product.final_price_for_customer()
                 FaktorItem.objects.create(
-                    sell=faktor, product=product, quantity=qty,
-                    unit_price=unit_price, user=request.user,
+                    sell=faktor,
+                    product=product,
+                    quantity=qty,
+                    unit_price=unit_price,
+                    user=request.user,
                 )
-                product.count -= qty
-                product.save(update_fields=['count'])
+                # FIX: row-level lock prevents race condition when multiple
+                # requests decrement the same product simultaneously.
+                updated = Product.objects.select_for_update().filter(
+                    pk=product.pk,
+                    count__gte=qty,  # re-check stock inside the lock
+                ).update(count=F('count') - qty)
+                if not updated:
+                    # Another request consumed the stock between our check
+                    # and our lock — roll back the whole transaction.
+                    raise ValueError(
+                        f'موجودی «{product.name}» در حین ثبت تمام شد. '
+                        f'لطفاً دوباره تلاش کنید.'
+                    )
                 line_total = unit_price * qty
                 total += line_total
                 items_payload.append({
@@ -201,10 +207,8 @@ class CreateFaktorSellView(StaffGroupRequiredMixin, View):
             faktor.save(update_fields=['total_price'])
 
         if wants_json:
-            # #F9 print flow: the client renders the receipt from this JSON
-            # and calls window.print() itself, then navigates back here —
-            # there's no server-rendered "saved invoice" page to print from
-            # anymore, since we never redirect through /edit/.
+            # F9 print flow: client renders the receipt from this JSON
+            # and calls window.print() itself.
             return JsonResponse({
                 'success': True,
                 'number': faktor.number,
@@ -228,7 +232,6 @@ class ListFactorSellView(StaffGroupRequiredMixin, ListView):
         qs = super().get_queryset().filter(user=self.request.user)
         query = self.request.GET.get("q", "").strip()
         if query:
-            # T1.6: search box previously submitted `?q=` but nothing read it.
             qs = qs.filter(
                 db_models.Q(customer__icontains=query)
                 | db_models.Q(number__icontains=query)
@@ -248,15 +251,10 @@ class EditFaktorSellView(StaffGroupRequiredMixin, UpdateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         faktor = self.get_object()
-        # T1.1 bug fix: this context never actually exposed `faktor` itself,
-        # only derived values — so `data-faktor-id="{{ faktor.pk }}"` in the
-        # template always rendered empty and the barcode-scan JS silently
-        # refused to add items ("Please save the faktor first.") even on
-        # an already-saved invoice.
         context['faktor'] = faktor
         context['items'] = faktor.items.all()
         context['total'] = sum(item.total_price for item in context['items'])
-        context['credit'] = 0  # Placeholder
+        context['credit'] = 0
         context['today'] = timezone.now()
         context['user'] = self.request.user
         context['description'] = faktor.description
@@ -274,10 +272,9 @@ class DeleteFaktorSellView(StaffGroupRequiredMixin, DeleteView):
 
 class AddItemView(StaffGroupRequiredMixin, View):
     """
-    Add one unit of a product to a sell invoice. #3: accepts either an
-    exact `barcode` (legacy scan-and-Enter flow) or a `product_id` (new
-    click-a-search-result flow) — product_id is preferred when present
-    since it can't collide/mismatch the way a re-typed barcode string can.
+    Add one unit of a product to a sell invoice.
+    Accepts either an exact `barcode` (legacy scan flow) or a
+    `product_id` (search-result click) — product_id is preferred.
     """
 
     def post(self, request):
@@ -298,39 +295,40 @@ class AddItemView(StaffGroupRequiredMixin, View):
         except FaktorSell.DoesNotExist:
             return JsonResponse({'success': False, 'error': 'Faktor not found'})
 
-        # T1.4: don't let a sale push stock below zero.
-        if product.count <= 0:
-            return JsonResponse({
-                'success': False,
-                'error': f'"{product.name}" is out of stock.',
-            })
+        with transaction.atomic():
+            item, created = FaktorItem.objects.get_or_create(
+                sell=faktor,
+                product=product,
+                defaults={
+                    'quantity': 1,
+                    'unit_price': product.final_price_for_customer(),
+                    'user': request.user,
+                },
+            )
+            if not created:
+                item.quantity += 1
+                item.save()
 
-        item, created = FaktorItem.objects.get_or_create(
-            sell=faktor,
-            product=product,
-            defaults={
-                'quantity': 1,
-                'unit_price': product.final_price_for_customer(),
-                'user': request.user,
-            },
-        )
-        if not created:
-            item.quantity += 1
-            item.save()
+            # FIX: row-level lock; also validates stock >= 1 atomically.
+            updated = Product.objects.select_for_update().filter(
+                pk=product.pk,
+                count__gte=1,
+            ).update(count=F('count') - 1)
 
-        # T1.4: decrement stock by exactly the one unit just sold.
-        product.count -= 1
-        product.save(update_fields=['count'])
+            if not updated:
+                return JsonResponse({
+                    'success': False,
+                    'error': f'"{product.name}" is out of stock.',
+                })
 
-        # Update total_price
         faktor.total_price = sum(i.total_price for i in faktor.items.all())
-        faktor.save()
+        faktor.save(update_fields=['total_price'])
 
         return JsonResponse({'success': True})
 
 
 # ----------------------------------------------------------------------
-# BUY VIEWS — #4: temporarily disabled via BuyEnabledRequiredMixin
+# BUY VIEWS — temporarily disabled via BuyEnabledRequiredMixin
 # ----------------------------------------------------------------------
 class CreateFaktorBuyView(BuyEnabledRequiredMixin, StaffGroupRequiredMixin, CreateView):
     model = FaktorBuy
@@ -338,7 +336,6 @@ class CreateFaktorBuyView(BuyEnabledRequiredMixin, StaffGroupRequiredMixin, Crea
     template_name = "faktor/faktor_buy_form.html"
 
     def form_valid(self, form):
-        # T1.7: buy invoices are now scoped per-user, same as sell.
         form.instance.user = self.request.user
         return super().form_valid(form)
 
@@ -363,10 +360,6 @@ class ListFactorBuyView(BuyEnabledRequiredMixin, StaffGroupRequiredMixin, ListVi
     paginate_by = 20
 
     def get_queryset(self):
-        # T1.7: buy invoices scoped to the user who created them, same
-        # policy as sell. (Rows created before this field existed have a
-        # null user and simply won't show up per-user — see roadmap T1.7
-        # if you'd rather buy invoices be shared/company-wide instead.)
         qs = super().get_queryset().filter(user=self.request.user)
         query = self.request.GET.get("q", "").strip()
         if query:
@@ -408,7 +401,7 @@ class DeleteFaktorBuyView(BuyEnabledRequiredMixin, StaffGroupRequiredMixin, Dele
 
 
 class AddBuyItemView(BuyEnabledRequiredMixin, StaffGroupRequiredMixin, View):
-    """Add one unit of a product to a buy invoice. T1.2/T1.4, #3/#6 search."""
+    """Add one unit of a product to a buy invoice."""
 
     def post(self, request):
         product_id = request.POST.get('product_id')
@@ -428,76 +421,73 @@ class AddBuyItemView(BuyEnabledRequiredMixin, StaffGroupRequiredMixin, View):
         except FaktorBuy.DoesNotExist:
             return JsonResponse({'success': False, 'error': 'Faktor not found'})
 
-        item, created = FaktorItem.objects.get_or_create(
-            buy=faktor,
-            product=product,
-            defaults={
-                'quantity': 1,
-                'unit_price': product.price_for_company,
-                'user': request.user,
-            },
-        )
-        if not created:
-            item.quantity += 1
-            item.save()
+        with transaction.atomic():
+            item, created = FaktorItem.objects.get_or_create(
+                buy=faktor,
+                product=product,
+                defaults={
+                    'quantity': 1,
+                    'unit_price': product.price_for_company,
+                    'user': request.user,
+                },
+            )
+            if not created:
+                item.quantity += 1
+                item.save()
 
-        # T1.4: purchases increase stock.
-        product.count += 1
-        product.save(update_fields=['count'])
+            # Purchases increase stock — use F() to avoid race condition.
+            Product.objects.select_for_update().filter(
+                pk=product.pk
+            ).update(count=F('count') + 1)
 
         faktor.total_price = sum(i.total_price for i in faktor.items.all())
-        faktor.save()
+        faktor.save(update_fields=['total_price'])
 
         return JsonResponse({'success': True})
 
-# home/faktor/views.py
-# فقط ReportsView رو جایگزین کن — بقیه views دست نخور
 
+# ----------------------------------------------------------------------
+# REPORTS
+# ----------------------------------------------------------------------
 class ReportsView(StaffGroupRequiredMixin, View):
     """
-    داشبورد گزارشات فروش.
-    - بهای تمام‌شده بر اساس قیمت فعلی محصول محاسبه می‌شه (نه قیمت زمان فروش)
-    - اگه قیمت‌ها تغییر کرده باشن، سود تقریبیه
+    Sales dashboard.
+    Cost of goods is based on current product price (not price at time of
+    sale), so profit figures are approximate if prices have changed.
     """
     template_name = "faktor/reports.html"
 
     def get(self, request):
-        from django.db.models import Sum, Count, F, Q
-        from django.utils import timezone
-        from datetime import timedelta
         from collections import defaultdict
 
         sell_items = FaktorItem.objects.filter(
-        sell__isnull=False
+            sell__isnull=False
         ).select_related('product', 'sell', 'sell__user')
 
-
-        # ── KPI اصلی ──────────────────────────────────────────────
+        # ── KPIs ──────────────────────────────────────────────────────
         total_revenue = sum(i.total_price for i in sell_items)
-        total_cost    = sum(
+        total_cost = sum(
             i.quantity * i.product.price_for_company for i in sell_items
         )
-        total_profit  = total_revenue - total_cost
+        total_profit = total_revenue - total_cost
 
-        # ── تعداد کل فاکتور و آیتم ────────────────────────────────
         total_invoices = FaktorSell.objects.count()
         total_items_sold = sum(i.quantity for i in sell_items)
 
-        # ── فروش روزانه ۳۰ روز اخیر ──────────────────────────────
+        # ── Daily sales — last 30 days ────────────────────────────────
         since = timezone.now().date() - timedelta(days=29)
         daily_map = defaultdict(float)
         for item in sell_items:
             if item.sell.date >= since:
                 daily_map[str(item.sell.date)] += float(item.total_price)
 
-        # پر کردن روزهای بدون فروش با صفر
         daily_labels, daily_values = [], []
         for d in range(30):
             day = since + timedelta(days=d)
             daily_labels.append(str(day))
             daily_values.append(round(daily_map.get(str(day), 0)))
 
-        # ── فروش ماهانه ۶ ماه اخیر ───────────────────────────────
+        # ── Monthly sales — last 6 months ─────────────────────────────
         six_months_ago = timezone.now().date().replace(day=1) - timedelta(days=150)
         monthly_map = defaultdict(float)
         for item in sell_items:
@@ -508,21 +498,21 @@ class ReportsView(StaffGroupRequiredMixin, View):
         monthly_labels = sorted(monthly_map.keys())
         monthly_values = [round(monthly_map[k]) for k in monthly_labels]
 
-        # ── پرفروش‌ترین محصولات (top 10) ──────────────────────────
+        # ── Top 10 products by revenue ────────────────────────────────
         product_map = defaultdict(lambda: {"revenue": 0.0, "qty": 0})
         for item in sell_items:
             name = item.product.name
             product_map[name]["revenue"] += float(item.total_price)
-            product_map[name]["qty"]     += item.quantity
+            product_map[name]["qty"] += item.quantity
 
         top_products = sorted(
             product_map.items(), key=lambda x: x[1]["revenue"], reverse=True
         )[:10]
         top_product_labels = [p[0] for p in top_products]
         top_product_values = [round(p[1]["revenue"]) for p in top_products]
-        top_product_qty    = [p[1]["qty"] for p in top_products]
+        top_product_qty = [p[1]["qty"] for p in top_products]
 
-        # ── توزیع دسته‌بندی (tag) ──────────────────────────────────
+        # ── Category (tag) distribution ───────────────────────────────
         tag_map = defaultdict(float)
         for item in sell_items:
             tag = item.product.tag or "سایر"
@@ -531,51 +521,48 @@ class ReportsView(StaffGroupRequiredMixin, View):
         tag_labels = list(tag_map.keys())
         tag_values = [round(v) for v in tag_map.values()]
 
-        # ── نرخ سود هر محصول (top 8) ─────────────────────────────
-        margin_data = []
+        # ── Profit margin per product (top 8) ────────────────────────
+        margin_map = defaultdict(list)
         for item in sell_items:
             cost = float(item.product.price_for_company)
             if cost > 0:
                 margin = ((float(item.unit_price) - cost) / cost) * 100
-                margin_data.append((item.product.name, round(margin, 1)))
+                margin_map[item.product.name].append(round(margin, 1))
 
-        # میانگین margin هر محصول
-        margin_map = defaultdict(list)
-        for name, m in margin_data:
-            margin_map[name].append(m)
-        avg_margin = {k: round(sum(v)/len(v), 1) for k, v in margin_map.items()}
+        avg_margin = {k: round(sum(v) / len(v), 1) for k, v in margin_map.items()}
         top_margin = sorted(avg_margin.items(), key=lambda x: x[1], reverse=True)[:8]
         margin_labels = [x[0] for x in top_margin]
         margin_values = [x[1] for x in top_margin]
 
-        # ── آخرین ۱۰ فاکتور ───────────────────────────────────────
+        # ── Last 10 invoices ──────────────────────────────────────────
         recent_invoices = FaktorSell.objects.order_by('-date', '-id')[:10]
 
         context = {
-            # KPI
-            "total_revenue":     total_revenue,
-            "total_cost":        total_cost,
-            "total_profit":      total_profit,
-            "total_invoices":    total_invoices,
-            "total_items_sold":  total_items_sold,
+            # KPIs
+            "total_revenue": total_revenue,
+            "total_cost": total_cost,
+            "total_profit": total_profit,
+            "total_invoices": total_invoices,
+            "total_items_sold": total_items_sold,
             "profit_margin_pct": round(
                 (float(total_profit) / float(total_revenue) * 100)
-                if total_revenue else 0, 1
+                if total_revenue else 0,
+                1,
             ),
-            # نمودارها
-            "daily_labels":        daily_labels,
-            "daily_values":        daily_values,
-            "monthly_labels":      monthly_labels,
-            "monthly_values":      monthly_values,
-            "top_product_labels":  top_product_labels,
-            "top_product_values":  top_product_values,
-            "top_product_qty":     top_product_qty,
-            "tag_labels":          tag_labels,
-            "tag_values":          tag_values,
-            "margin_labels":       margin_labels,
-            "margin_values":       margin_values,
-            # جدول آخرین فاکتورها
-            "recent_invoices":     recent_invoices,
+            # Charts
+            "daily_labels": daily_labels,
+            "daily_values": daily_values,
+            "monthly_labels": monthly_labels,
+            "monthly_values": monthly_values,
+            "top_product_labels": top_product_labels,
+            "top_product_values": top_product_values,
+            "top_product_qty": top_product_qty,
+            "tag_labels": tag_labels,
+            "tag_values": tag_values,
+            "margin_labels": margin_labels,
+            "margin_values": margin_values,
+            # Table
+            "recent_invoices": recent_invoices,
         }
         return render(request, self.template_name, context)
 
