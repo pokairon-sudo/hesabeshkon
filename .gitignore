@@ -1,11 +1,30 @@
-.venv/
-venv/
+# Python
 __pycache__/
 *.py[cod]
-db.sqlite3
-accountant.sqlite3
-backups/
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+ENV/
+
+# Django
+*.sqlite3
+*.log
+.env
+.DS_Store
+
+# Media
 media/
 staticfiles/
-.env
-.ffprofile/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Build
+build/
+dist/
+*.egg-info/

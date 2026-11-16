@@ -1,20 +1,26 @@
-{# قالب پایه — طراحی بروتالیست، RTL، فقط برای کارکنان #}
+{# قالب پایه — طراحی مدرن Liquid Glass با افکت‌های شیشه و ۳D #}
 {% load static jalali %}
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="theme-color" content="#e8ff00">
+    <meta name="theme-color" content="#007AFF">
     <title>{% block title %}{{ shop.shop_name }}{% endblock %}</title>
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;700;800;900&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="{% static 'css/brutal.css' %}">
+    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+
+    <!-- Liquid Glass UI Stylesheet -->
+    <link rel="stylesheet" href="{% static 'css/liquid-glass.css' %}">
+
     {% block extra_head %}{% endblock %}
 </head>
 <body class="{% block body_class %}{% endblock %}" data-shop-unit="{{ shop.currency_unit }}">
+    <!-- Animated Mesh Gradient Background -->
+    <div class="mesh-bg"></div>
     {{ shop_config|json_script:"shop-config" }}
 
     <header class="topbar no-print">
@@ -28,27 +34,39 @@
 
             {% if request.user.is_authenticated %}
             <nav class="nav" aria-label="ناوبری اصلی">
-                <a href="{% url 'home' %}" class="nav__link {% if request.resolver_match.url_name|default:'' == 'home' %}is-active{% endif %}">داشبورد</a>
-                <a href="{% url 'faktor:sell-list' %}" class="nav__link {% if 'sell' in request.resolver_match.url_name|default:'' %}is-active{% endif %}">فروش</a>
+                <a href="{% url 'home' %}" class="nav__link {% if request.resolver_match.url_name|default:'' == 'home' %}is-active{% endif %}">
+                    <span>📊</span> داشبورد
+                </a>
+                <a href="{% url 'faktor:sell-list' %}" class="nav__link {% if 'sell' in request.resolver_match.url_name|default:'' %}is-active{% endif %}">
+                    <span>🛒</span> فروش
+                </a>
                 {% if buy_enabled %}
-                <a href="{% url 'faktor:buy-list' %}" class="nav__link {% if 'buy' in request.resolver_match.url_name|default:'' %}is-active{% endif %}">خرید</a>
+                <a href="{% url 'faktor:buy-list' %}" class="nav__link {% if 'buy' in request.resolver_match.url_name|default:'' %}is-active{% endif %}">
+                    <span>📥</span> خرید
+                </a>
                 {% endif %}
-                <a href="{% url 'product:l-product' %}" class="nav__link {% if request.resolver_match.app_name|default:'' == 'product' %}is-active{% endif %}">کالاها</a>
+                <a href="{% url 'product:l-product' %}" class="nav__link {% if request.resolver_match.app_name|default:'' == 'product' %}is-active{% endif %}">
+                    <span>📦</span> کالاها
+                </a>
                 {% if request.user.is_admin %}
-                <a href="{% url 'reports' %}" class="nav__link nav__link--admin {% if request.resolver_match.url_name|default:'' == 'reports' %}is-active{% endif %}">گزارش‌ها</a>
-                <a href="{% url 'settings' %}" class="nav__link nav__link--admin {% if request.resolver_match.url_name|default:'' == 'settings' %}is-active{% endif %}">تنظیمات</a>
+                <a href="{% url 'reports' %}" class="nav__link {% if request.resolver_match.url_name|default:'' == 'reports' %}is-active{% endif %}">
+                    <span>📈</span> گزارش‌ها
+                </a>
+                <a href="{% url 'settings' %}" class="nav__link {% if request.resolver_match.url_name|default:'' == 'settings' %}is-active{% endif %}">
+                    <span>⚙️</span> تنظیمات
+                </a>
                 {% endif %}
             </nav>
             <div class="userbox">
                 <span class="chip chip--dark" title="{{ request.user.email }}">
                     <span class="avatar">{{ request.user.username|slice:":1"|upper }}</span>
-                    {{ request.user.username }}
+                    <span class="chip-name hidden-xs">{{ request.user.username }}</span>
                 </span>
-                <span class="chip {% if request.user.is_admin %}chip--acid{% endif %}">{{ request.user.get_role_display }}</span>
-                <a href="{% url 'profile' %}" class="nav__link" title="پروفایل">پروفایل</a>
+                <span class="badge badge--primary">{{ request.user.get_role_display }}</span>
+                <a href="{% url 'profile' %}" class="btn btn--glass btn--sm">پروفایل</a>
                 <form method="post" action="{% url 'logout' %}" class="inline">
                     {% csrf_token %}
-                    <button type="submit" class="brut-btn brut-btn--sm brut-btn--ghost">خروج</button>
+                    <button type="submit" class="btn btn--glass-ghost btn--sm">خروج</button>
                 </form>
             </div>
             {% endif %}
@@ -68,7 +86,7 @@
             </span>
             <span class="shortcut-legend">
                 <span><span class="shortcut">F6</span> پیش‌نویس</span>
-                <span><span class="shortcut">F7</span> نهایی + حسابدار</span>
+                <span><span class="shortcut">F7</span> نهایی</span>
                 <span><span class="shortcut">F8</span> کالا</span>
                 <span><span class="shortcut">F9</span> چاپ</span>
             </span>
@@ -78,6 +96,7 @@
 
     <div id="toasts" aria-live="polite"></div>
     <script src="{% static 'js/app.js' %}"></script>
+    <script src="{% static 'js/liquid-glass.js' %}"></script>
     {% block scripts %}{% endblock %}
 </body>
 </html>
