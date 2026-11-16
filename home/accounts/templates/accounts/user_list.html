@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% load jalali %}
+
+{% block title %}کاربران — {{ shop.shop_name }}{% endblock %}
+
+{% block content %}
+<div class="page-head">
+    <div>
+        <span class="kicker">مدیریت دسترسی</span>
+        <h1>کاربران</h1>
+        <p class="page-head__desc">فقط نقش «مدیر» و «اپراتور» اجازه ورود دارند. اپراتور گزارش‌ها و تنظیمات را نمی‌بیند.</p>
+    </div>
+    <a href="{% url 'user-create' %}" class="brut-btn brut-btn--primary">＋ کاربر جدید</a>
+</div>
+
+<form method="get" class="brut-card brut-card--flat mb-3" style="padding:12px">
+    <div class="row" style="align-items:flex-end">
+        <div style="flex:1">
+            <label for="q">جستجو</label>
+            <input id="q" type="text" name="q" value="{{ request.GET.q }}" placeholder="نام کاربری یا ایمیل…">
+        </div>
+        <button type="submit" class="brut-btn brut-btn--dark">جستجو</button>
+    </div>
+</form>
+
+<div class="table-wrap">
+    <table class="brut-table">
+        <thead><tr><th>نام کاربری</th><th>ایمیل</th><th>نقش</th><th>وضعیت</th><th>آخرین ورود</th><th>عملیات</th></tr></thead>
+        <tbody>
+            {% for item in users %}
+            <tr>
+                <td><strong>{{ item.username }}</strong>{% if item.is_superuser %} <span class="badge badge--dark">سوپریوزر</span>{% endif %}</td>
+                <td class="mono">{{ item.email }}</td>
+                <td><span class="badge {% if item.is_admin %}badge--acid{% else %}badge--info{% endif %}">{{ item.get_role_display }}</span></td>
+                <td>{% if item.is_active %}<span class="badge badge--ok">فعال</span>{% else %}<span class="badge badge--danger">غیرفعال</span>{% endif %}</td>
+                <td class="mono text-xs">{% if item.last_login %}{{ item.last_login|jalali_datetime }}{% else %}—{% endif %}</td>
+                <td><a href="{% url 'user-edit' item.pk %}" class="brut-btn brut-btn--sm">ویرایش</a></td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="6" class="table-empty">کاربری پیدا نشد.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{% if is_paginated %}
+<div class="row mt-3" style="justify-content:center">
+    {% if page_obj.has_previous %}<a class="brut-btn brut-btn--sm" href="?page={{ page_obj.previous_page_number }}&q={{ request.GET.q|urlencode }}">قبلی</a>{% endif %}
+    <span class="chip">صفحه {{ page_obj.number }} از {{ paginator.num_pages }}</span>
+    {% if page_obj.has_next %}<a class="brut-btn brut-btn--sm" href="?page={{ page_obj.next_page_number }}&q={{ request.GET.q|urlencode }}">بعدی</a>{% endif %}
+</div>
+{% endif %}
+{% endblock %}

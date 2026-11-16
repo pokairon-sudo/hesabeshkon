@@ -1,0 +1,222 @@
+{% extends "base.html" %}
+{% load money static jalali %}
+
+{% block title %}{% if kind == "sell" %}فاکتور {{ invoice.number }}{% else %}فاکتور خرید {{ invoice.number }}{% endif %} — {{ shop.shop_name }}{% endblock %}
+
+{% block body_class %}format-{{ print_format }}{% endblock %}
+
+{% block content %}
+<div class="print-toolbar no-print">
+    <div class="row">
+        <a href="{{ back_url }}" class="brut-btn brut-btn--ghost">→ بازگشت</a>
+        {% if invoice.is_draft and edit_url %}
+        <a href="{{ edit_url }}" class="brut-btn brut-btn--primary">ادامه ویرایش</a>
+        {% endif %}
+        {% if invoice.is_completed %}
+        <span class="badge badge--ok">نهایی شده</span>
+        {% else %}
+        <span class="badge badge--draft">پیش‌نویس</span>
+        {% endif %}
+        {% if invoice.accounted %}
+        <span class="badge badge--info">در حسابدار ثبت شد</span>
+        {% elif invoice.is_completed %}
+        <span class="badge badge--danger">در انتظار حسابدار</span>
+        {% endif %}
+    </div>
+
+    <div class="row">
+        <div class="preview-tabs" role="tablist" aria-label="نوع پیش‌نمایش">
+            <button type="button" data-preview-format="a4" class="{% if print_format != 'receipt' %}is-active{% endif %}">A4</button>
+            <button type="button" data-preview-format="receipt" class="{% if print_format == 'receipt' %}is-active{% endif %}">رسید ۸۰mm</button>
+        </div>
+        <button type="button" class="brut-btn brut-btn--dark" data-print-format="receipt">🖨 چاپ رسید</button>
+        <button type="button" class="brut-btn" data-print-format="a4">🖨 چاپ A4</button>
+        {% if kind == "sell" and invoice.is_completed and request.user.is_admin %}
+        <form method="post" action="{% url 'faktor:sell-delete' invoice.pk %}"
+              data-confirm="این فاکتور ابطال شود و موجودی کالاها برگردد؟">
+            {% csrf_token %}
+            <button type="submit" class="brut-btn brut-btn--danger">ابطال فاکتور</button>
+        </form>
+        {% endif %}
+        {% if invoice.is_draft %}
+        <form method="post" action="{% if kind == 'sell' %}{% url 'faktor:sell-delete' invoice.pk %}{% else %}{% url 'faktor:buy-delete' invoice.pk %}{% endif %}" data-confirm="این پیش‌نویس حذف شود؟">
+            {% csrf_token %}
+            <button type="submit" class="brut-btn brut-btn--danger">حذف پیش‌نویس</button>
+        </form>
+        {% endif %}
+    </div>
+</div>
+
+{% if invoice.is_completed and not invoice.accounted %}
+<div class="msg msg--warning no-print">
+    این فاکتور نهایی شده اما در دیتابیس حسابدار ثبت نشده است.
+    {% if request.user.is_admin %}<a href="{% url 'settings' %}" style="text-decoration:underline">ارسال دوباره از تنظیمات</a>{% endif %}
+</div>
+{% endif %}
+
+<div class="print-stage">
+    <!-- نسخه A4 -->
+    <div id="sheet-a4" class="a4-sheet {% if print_format == 'receipt' %}sheet-hidden{% endif %}">
+        <div class="invoice-paper">
+            <div class="invoice-head">
+                <div>
+                    <h2>{{ shop.shop_name }}</h2>
+                    <div class="text-sm muted">{{ shop.address|default:"" }}</div>
+                    <div class="text-sm muted mono">{{ shop.phone }}</div>
+                </div>
+                <div class="invoice-meta">
+                    {% if invoice.is_draft %}<div><span class="badge badge--draft">پیش‌نویس — بدون ارزش مالی</span></div>{% endif %}
+                    <div><span>نوع فاکتور</span><b>{% if kind == "sell" %}فروش{% else %}خرید{% endif %}</b></div>
+                    <div><span>شماره</span><b class="mono">{{ invoice.number }}</b></div>
+                    <div><span>تاریخ</span><b class="mono">{{ invoice.date|jalali }}</b></div>
+                    <div><span>{{ party_label }}</span><b>{{ party|default:"—" }}</b></div>
+                    <div><span>ثبت‌کننده</span><b>{{ invoice.user.username }}</b></div>
+                </div>
+            </div>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width:34px">#</th>
+                        <th>کالا</th>
+                        <th>بارکد</th>
+                        <th style="width:60px">تعداد</th>
+                        <th style="width:110px">{% if kind == "buy" %}قیمت خرید{% else %}قیمت واحد{% endif %} ({{ shop.currency_label }})</th>
+                        <th style="width:110px">جمع ({{ shop.currency_label }})</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in items %}
+                    <tr>
+                        <td class="mono">{{ forloop.counter }}</td>
+                        <td>{{ item.product_name }}{% if item.product %} <span class="text-xs muted">({{ item.product.get_unit_display }})</span>{% endif %}</td>
+                        <td class="mono">{{ item.barcode }}</td>
+                        <td class="mono">{{ item.quantity }}</td>
+                        <td class="mono">{{ item.unit_price|money_short:shop }}</td>
+                        <td class="mono">{{ item.total_price|money_short:shop }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="6" class="table-empty">ردیفی ندارد.</td></tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <td colspan="5">جمع کل ({{ shop.currency_label }})</td>
+                        <td class="mono">{{ invoice.total_price|money_short:shop }}</td>
+                    </tr>
+                </tfoot>
+            </table>
+
+            {% if invoice.description %}
+            <div class="mt-2 text-sm"><b>توضیحات:</b> {{ invoice.description }}</div>
+            {% endif %}
+
+            <div class="invoice-footer">{{ shop.receipt_footer }}</div>
+        </div>
+    </div>
+
+    <!-- نسخه رسید ۸۰ میلی‌متری -->
+    <div id="sheet-receipt" class="receipt-wrap {% if print_format != 'receipt' %}sheet-hidden{% endif %}">
+        <div class="receipt-sheet">
+            <div class="receipt-brand">{{ shop.shop_name }}</div>
+            <div class="receipt-sub">{% if kind == "sell" %}فاکتور فروش{% else %}فاکتور خرید{% endif %}</div>
+            {% if invoice.is_draft %}<div class="receipt-sub" style="font-weight:800">پیش‌نویس — بدون ارزش مالی</div>{% endif %}
+            <div class="receipt-line"></div>
+            <div class="receipt-row"><span>شماره</span><b class="mono">{{ invoice.number }}</b></div>
+            <div class="receipt-row"><span>تاریخ</span><span class="mono">{{ invoice.date|jalali }}</span></div>
+            <div class="receipt-row"><span>{{ party_label }}</span><span>{{ party|default:"—" }}</span></div>
+            <div class="receipt-line"></div>
+            <table>
+                <thead>
+                    <tr><th style="text-align:right">کالا</th><th>تعداد</th><th>قیمت</th><th style="text-align:left">جمع</th></tr>
+                </thead>
+                <tbody>
+                    {% for item in items %}
+                    <tr>
+                        <td>{{ item.product_name }}</td>
+                        <td style="text-align:center" class="mono">{{ item.quantity }}</td>
+                        <td style="text-align:center" class="mono">{{ item.unit_price|money_short:shop }}</td>
+                        <td style="text-align:left" class="mono">{{ item.total_price|money_short:shop }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            <div class="receipt-line"></div>
+            <div class="receipt-total"><span>جمع کل ({{ shop.currency_label }})</span><span class="mono">{{ invoice.total_price|money_short:shop }}</span></div>
+            <div class="receipt-line"></div>
+            <div class="receipt-sub">{{ shop.receipt_footer }}</div>
+            <div class="receipt-sub mono">{{ shop.phone }}</div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  const a4 = document.getElementById("sheet-a4");
+  const receipt = document.getElementById("sheet-receipt");
+  const body = document.body;
+
+  function setBodyFormat(fmt) {
+    body.classList.remove("format-a4", "format-receipt");
+    body.classList.add("format-" + fmt);
+    document.querySelectorAll("[data-preview-format]").forEach(function (btn) {
+      btn.classList.toggle("is-active", btn.dataset.previewFormat === fmt);
+    });
+  }
+
+  function showPreview(fmt) {
+    setBodyFormat(fmt);
+    a4.classList.toggle("sheet-hidden", fmt !== "a4");
+    receipt.classList.toggle("sheet-hidden", fmt !== "receipt");
+  }
+
+  function pageRule(fmt) {
+    let style = document.getElementById("page-rule");
+    if (!style) {
+      style = document.createElement("style");
+      style.id = "page-rule";
+      document.head.appendChild(style);
+    }
+    style.textContent = fmt === "receipt"
+      ? "@page { size: 80mm auto; margin: 3mm; }"
+      : "@page { size: A4; margin: 10mm; }";
+  }
+
+  function printFormat(fmt) {
+    setBodyFormat(fmt);
+    pageRule(fmt);
+    // هر دو را در DOM نگه می‌داریم؛ CSS چاپ فقط یکی را نشان می‌دهد.
+    a4.classList.remove("sheet-hidden");
+    receipt.classList.remove("sheet-hidden");
+    window.print();
+  }
+
+  document.querySelectorAll("[data-preview-format]").forEach(function (button) {
+    button.addEventListener("click", function () {
+      showPreview(button.dataset.previewFormat);
+    });
+  });
+  document.querySelectorAll("[data-print-format]").forEach(function (button) {
+    button.addEventListener("click", function () {
+      printFormat(button.dataset.printFormat);
+    });
+  });
+
+  window.addEventListener("afterprint", function () {
+    showPreview(body.classList.contains("format-receipt") ? "receipt" : "a4");
+  });
+
+  {% if autoprint %}
+  setTimeout(function () { printFormat("{{ print_format|default:'receipt' }}"); }, 350);
+  {% endif %}
+
+  const syncError = sessionStorage.getItem("sync-error");
+  if (syncError) {
+    sessionStorage.removeItem("sync-error");
+    window.HS.toast("ارسال به حسابدار: " + syncError, "warning");
+  }
+})();
+</script>
+{% endblock %}

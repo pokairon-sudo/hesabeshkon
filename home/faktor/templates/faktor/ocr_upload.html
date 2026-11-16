@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+
+{% block title %}OCR فاکتور خرید — {{ shop.shop_name }}{% endblock %}
+
+{% block content %}
+<div class="page-head">
+    <div>
+        <span class="kicker">ورود کالا با عکس</span>
+        <h1>OCR فاکتور خرید</h1>
+        <p class="page-head__desc">
+            عکس فاکتور را بفرستید تا ردیف‌ها استخراج شوند. هیچ چیزی قبل از تأیید شما در دیتابیس نوشته نمی‌شود.
+            بعد از تأیید: کالاهای ناشناس ساخته می‌شوند، موجودی زیاد می‌شود و فاکتور خرید نهایی ثبت می‌گردد.
+        </p>
+    </div>
+    <a href="{% url 'faktor:buy-list' %}" class="brut-btn brut-btn--ghost">→ فاکتورهای خرید</a>
+</div>
+
+<div class="ocr-grid">
+    <form method="post" enctype="multipart/form-data" class="brut-card">
+        {% csrf_token %}
+        <div class="brut-card__title mb-2">۱) تصویر یا PDF</div>
+        <div class="file-drop">
+            <div style="font-size:2rem">📷</div>
+            <input type="file" name="image" accept="image/*,.pdf" aria-label="فایل فاکتور">
+            <p class="helptext">حداکثر ۱۲ مگابایت · تصویر یا PDF تا ۳ صفحه</p>
+        </div>
+
+        <div class="brut-card__title mt-3 mb-2">یا ۲) متن دستی</div>
+        <p class="helptext mb-1">هر ردیف: نام کالا، تعداد، قیمت واحد. مثلاً:</p>
+        <textarea name="text" rows="7" dir="rtl" placeholder="سیب ۱۰۰ ۵۰۰۰۰&#10;قهوه ۵ ۴۵۰۰۰۰&#10;شیر ۱۲ ۳۸۰۰۰">{{ raw_text }}</textarea>
+
+        <button type="submit" class="brut-btn brut-btn--primary brut-btn--block mt-2">استخراج ردیف‌ها →</button>
+        <p class="helptext mt-2">
+            اگر مدل بینایی روی سرور تنظیم شده باشد، عکس اول به آن داده می‌شود؛ در غیر این صورت
+            از Tesseract استفاده می‌شود. نصب زبان فارسی:
+            <span class="mono">apt install tesseract-ocr-fas</span>
+        </p>
+    </form>
+
+    <div class="stack">
+        <div class="brut-card">
+            <div class="brut-card__title mb-2">چطور کار می‌کند؟</div>
+            <ol style="margin:0;padding-inline-start:20px;font-size:0.85rem;font-weight:600;line-height:2">
+                <li>عکس فاکتور را بارگذاری می‌کنید.</li>
+                <li>متن با مدل بینایی یا Tesseract خوانده می‌شود.</li>
+                <li>هر ردیف با حساب «وزن × فی = جمع» سنجیده می‌شود.</li>
+                <li>ردیف‌ها در صفحه‌ی بعد قابل ویرایش هستند.</li>
+                <li>با تأیید شما، فاکتور خرید نهایی و موجودی به‌روز می‌شود.</li>
+            </ol>
+        </div>
+        <div class="brut-card brut-card--acid">
+            <div class="brut-card__title mb-1">نکته‌ی مهم</div>
+            <p class="text-sm" style="font-weight:700">
+                اگر عکس تار است یا زبان فارسی روی سرور نصب نیست، از کادر «متن دستی» استفاده کنید.
+                قیمت خرید را می‌توانید در صفحه‌ی بازبینی اصلاح کنید.
+            </p>
+        </div>
+        <div class="brut-card brut-card--flat">
+            <div class="brut-card__title mb-1">نمونه‌ی متن</div>
+            <pre class="raw-text" style="margin:0">قهوه اسپرسو 10 450000
+شیر 24 380000
+لیوان کاغذی 500 12000</pre>
+        </div>
+    </div>
+</div>
+{% endblock %}

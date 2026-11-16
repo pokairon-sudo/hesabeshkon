@@ -1,0 +1,11 @@
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+db.sqlite3
+accountant.sqlite3
+backups/
+media/
+staticfiles/
+.env
+.ffprofile/

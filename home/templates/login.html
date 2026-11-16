@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+
+{% block title %}ورود — {{ shop.shop_name }}{% endblock %}
+
+{% block body_class %}login-page{% endblock %}
+
+{% block content %}
+<div class="login-wrap">
+    <div class="login-card">
+        <div class="row row--between mb-2">
+            <h1>ورود</h1>
+            <span class="badge badge--dark">فقط کارکنان</span>
+        </div>
+        <p class="sub">با ایمیل و رمز عبور خود وارد شوید. این سامانه مخصوص مدیر و اپراتور است.</p>
+
+        {% if form.non_field_errors %}
+        <div class="msg msg--error mb-2">{{ form.non_field_errors|striptags }}</div>
+        {% endif %}
+
+        <form method="post" novalidate>
+            {% csrf_token %}
+            {% if request.GET.next %}<input type="hidden" name="next" value="{{ request.GET.next }}">{% endif %}
+
+            <div class="form-field">
+                <label for="{{ form.username.id_for_label }}">{{ form.username.label }}</label>
+                {{ form.username }}
+                {% if form.username.errors %}<div class="errorlist">{{ form.username.errors|striptags }}</div>{% endif %}
+            </div>
+
+            <div class="form-field">
+                <label for="{{ form.password.id_for_label }}">{{ form.password.label }}</label>
+                {{ form.password }}
+                {% if form.password.errors %}<div class="errorlist">{{ form.password.errors|striptags }}</div>{% endif %}
+            </div>
+
+            <button type="submit" class="brut-btn brut-btn--dark brut-btn--block brut-btn--lg mt-2">ورود به حساب</button>
+        </form>
+
+        <div class="login-note">
+            رمز خود را فراموش کرده‌اید؟ با مدیر فروشگاه تماس بگیرید تا رمز تازه بسازد.
+            <br>
+            نشست‌ها پس از چند دقیقه بی‌کاری منقضی می‌شوند.
+        </div>
+    </div>
+</div>
+{% endblock %}

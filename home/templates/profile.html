@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% load jalali %}
+
+{% block title %}پروفایل — {{ shop.shop_name }}{% endblock %}
+
+{% block content %}
+<div class="page-head">
+    <div>
+        <span class="kicker">حساب من</span>
+        <h1>پروفایل {{ request.user.username }}</h1>
+        <p class="page-head__desc">اطلاعات تماس خود را به‌روز کنید. نقش شما: <b>{{ request.user.get_role_display }}</b></p>
+    </div>
+    <a href="{% url 'password_change' %}" class="brut-btn">🔑 تغییر رمز عبور</a>
+</div>
+
+<div class="grid grid-2">
+    <form method="post" class="brut-card">
+        {% csrf_token %}
+        <div class="brut-card__head"><span class="brut-card__title">اطلاعات حساب</span></div>
+        {% if form.non_field_errors %}<div class="msg msg--error mb-2">{{ form.non_field_errors|striptags }}</div>{% endif %}
+        <div class="form-field">
+            <label for="{{ form.username.id_for_label }}">نام کاربری</label>
+            {{ form.username }}
+            {% if form.username.errors %}<div class="errorlist">{{ form.username.errors|striptags }}</div>{% endif %}
+        </div>
+        <div class="form-field">
+            <label for="{{ form.email.id_for_label }}">ایمیل (نام ورود)</label>
+            {{ form.email }}
+            {% if form.email.errors %}<div class="errorlist">{{ form.email.errors|striptags }}</div>{% endif %}
+        </div>
+        <div class="form-field">
+            <label for="{{ form.phone.id_for_label }}">تلفن</label>
+            {{ form.phone }}
+            {% if form.phone.errors %}<div class="errorlist">{{ form.phone.errors|striptags }}</div>{% endif %}
+        </div>
+        <button type="submit" class="brut-btn brut-btn--primary">ذخیره تغییرات</button>
+    </form>
+
+    <div class="brut-card">
+        <div class="brut-card__head"><span class="brut-card__title">نشست</span></div>
+        <div class="stack">
+            <div class="row row--between"><span class="muted">نقش</span><span class="badge {% if request.user.is_admin %}badge--acid{% else %}badge--info{% endif %}">{{ request.user.get_role_display }}</span></div>
+            <div class="row row--between"><span class="muted">وضعیت</span><span class="badge {% if request.user.is_active %}badge--ok{% else %}badge--danger{% endif %}">{% if request.user.is_active %}فعال{% else %}غیرفعال{% endif %}</span></div>
+            <div class="row row--between"><span class="muted">آخرین ورود</span><span class="mono">{% if request.user.last_login %}{{ request.user.last_login|jalali_datetime }}{% else %}—{% endif %}</span></div>
+            <div class="row row--between"><span class="muted">عضویت</span><span class="mono">{{ request.user.date_joined|jalali }}</span></div>
+        </div>
+        <hr style="border:0;border-top:3px solid var(--ink);margin:16px 0">
+        <form method="post" action="{% url 'logout' %}">
+            {% csrf_token %}
+            <button type="submit" class="brut-btn brut-btn--danger brut-btn--block">خروج از حساب</button>
+        </form>
+    </div>
+</div>
+{% endblock %}
