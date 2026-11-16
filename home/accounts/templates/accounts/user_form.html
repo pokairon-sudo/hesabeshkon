@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% block title %}{% if is_new %}کاربر جدید{% else %}ویرایش {{ obj.username }}{% endif %} — {{ shop.shop_name }}{% endblock %}
+
+{% block content %}
+<div class="page-head">
+    <div>
+        <span class="kicker">دسترسی</span>
+        <h1>{% if is_new %}ساخت کاربر{% else %}ویرایش «{{ obj.username }}»{% endif %}</h1>
+        <p class="page-head__desc">مدیر به گزارش‌ها، تنظیمات و مدیریت کاربران دسترسی دارد؛ اپراتور فقط فروش، خرید و کالا.</p>
+    </div>
+    <a href="{% url 'user-list' %}" class="brut-btn brut-btn--ghost">→ فهرست کاربران</a>
+</div>
+
+<form method="post" class="brut-card" style="max-width:760px">
+    {% csrf_token %}
+    {% if form.non_field_errors %}<div class="msg msg--error mb-2">{{ form.non_field_errors|striptags }}</div>{% endif %}
+    <div class="form-grid">
+        <div class="form-field">
+            <label for="{{ form.username.id_for_label }}">نام کاربری *</label>
+            {{ form.username }}
+            {% if form.username.errors %}<div class="errorlist">{{ form.username.errors|striptags }}</div>{% endif %}
+        </div>
+        <div class="form-field">
+            <label for="{{ form.email.id_for_label }}">ایمیل (نام ورود) *</label>
+            {{ form.email }}
+            {% if form.email.errors %}<div class="errorlist">{{ form.email.errors|striptags }}</div>{% endif %}
+        </div>
+        <div class="form-field">
+            <label for="{{ form.phone.id_for_label }}">تلفن</label>
+            {{ form.phone }}
+            {% if form.phone.errors %}<div class="errorlist">{{ form.phone.errors|striptags }}</div>{% endif %}
+        </div>
+        <div class="form-field">
+            <label for="{{ form.role.id_for_label }}">نقش *</label>
+            {{ form.role }}
+            {% if form.role.errors %}<div class="errorlist">{{ form.role.errors|striptags }}</div>{% endif %}
+        </div>
+        <div class="form-field">
+            <label for="{{ form.password1.id_for_label }}">رمز عبور {% if is_new %}*{% endif %}</label>
+            {{ form.password1 }}
+            <span class="helptext">{{ form.password1.help_text }}</span>
+            {% if form.password1.errors %}<div class="errorlist">{{ form.password1.errors|striptags }}</div>{% endif %}
+        </div>
+        <div class="form-field">
+            <label for="{{ form.password2.id_for_label }}">تکرار رمز</label>
+            {{ form.password2 }}
+            {% if form.password2.errors %}<div class="errorlist">{{ form.password2.errors|striptags }}</div>{% endif %}
+        </div>
+        <div class="form-field span-2">
+            <label class="check-row">{{ form.is_active }} حساب فعال باشد</label>
+        </div>
+    </div>
+    <div class="row mt-2">
+        <button type="submit" class="brut-btn brut-btn--primary brut-btn--lg">💾 ذخیره</button>
+        <a href="{% url 'user-list' %}" class="brut-btn brut-btn--ghost">انصراف</a>
+    </div>
+</form>
+{% endblock %}

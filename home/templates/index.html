@@ -1,0 +1,170 @@
+{% extends "base.html" %}
+{% load money jalali %}
+
+{% block title %}داشبورد — {{ shop.shop_name }}{% endblock %}
+
+{% block content %}
+<div class="page-head">
+    <div>
+        <span class="kicker">امروز {{ today|jalali }}</span>
+        <h1>سلام {{ request.user.username }} 👋</h1>
+        <p class="page-head__desc">
+            {% if request.user.is_admin %}
+            نمای کلی فروش، سود، خرید و موجودی. با <span class="shortcut">F6</span> تا <span class="shortcut">F9</span> در صفحه‌ی فاکتور سریع کار کنید.
+            {% else %}
+            فروش، پیش‌نویس‌ها و موجودی امروز. برای شروع یک فاکتور جدید بسازید.
+            {% endif %}
+        </p>
+    </div>
+    <div class="row">
+        <a href="{% url 'faktor:sell-create' %}" class="brut-btn brut-btn--primary brut-btn--lg">＋ فاکتور فروش جدید</a>
+        {% if buy_enabled %}
+        <a href="{% url 'faktor:ocr' %}" class="brut-btn">📷 خرید با OCR</a>
+        {% endif %}
+    </div>
+</div>
+
+{% if request.user.is_admin and unaccounted %}
+<div class="msg msg--warning mb-3">
+    ⚠ {{ unaccounted }} فاکتور نهایی‌شده هنوز به دیتابیس حسابدار نرسیده است.
+    <a href="{% url 'settings' %}" style="text-decoration:underline">رفتن به تنظیمات و ارسال دوباره</a>
+</div>
+{% endif %}
+
+<div class="grid grid-4 mb-3">
+    <div class="kpi">
+        <div class="kpi__label">فروش امروز</div>
+        <div class="kpi__value">{{ today_sales|money:shop }}</div>
+        <div class="kpi__hint">{{ today_invoices }} فاکتور · {{ today_profit|money:shop }} سود</div>
+    </div>
+    <div class="kpi kpi--orange">
+        <div class="kpi__label">فروش ۳۰ روز اخیر</div>
+        <div class="kpi__value">{{ month_sales|money:shop }}</div>
+        <div class="kpi__hint">{{ month_invoices }} فاکتور</div>
+    </div>
+    <div class="kpi kpi--green">
+        <div class="kpi__label">سود ۳۰ روز اخیر</div>
+        <div class="kpi__value">{{ month_profit|money:shop }}</div>
+        <div class="kpi__hint">بر اساس قیمت خرید ثبت‌شده در هر فروش</div>
+    </div>
+    <div class="kpi kpi--red">
+        <div class="kpi__label">پیش‌نویس‌های باز</div>
+        <div class="kpi__value">{{ draft_count }}</div>
+        <div class="kpi__hint">با F6 ذخیره شده‌اند</div>
+    </div>
+</div>
+
+<div class="grid grid-3 mb-3" style="align-items:start">
+    <div class="brut-card" style="padding:0;overflow:hidden">
+        <div class="brut-card__head" style="padding:14px 16px 10px;margin:0">
+            <span class="brut-card__title">میان‌برهای روزانه</span>
+            <span class="badge badge--acid">{{ product_count }} کالا</span>
+        </div>
+        <div class="grid grid-2" style="gap:0">
+            <a href="{% url 'faktor:sell-create' %}" class="tile tile--primary" style="border:0;border-top:3px solid var(--ink);box-shadow:none">
+                <span class="tile__icon">🧾</span><span class="tile__title">فروش جدید</span><span class="tile__hint">F7 برای نهایی‌سازی</span>
+            </a>
+            <a href="{% url 'faktor:sell-list' %}" class="tile" style="border:0;border-top:3px solid var(--ink);border-inline-start:3px solid var(--ink);box-shadow:none">
+                <span class="tile__icon">📄</span><span class="tile__title">فاکتورهای فروش</span><span class="tile__hint">جستجو و ادامه‌ی پیش‌نویس</span>
+            </a>
+            {% if buy_enabled %}
+            <a href="{% url 'faktor:buy-create' %}" class="tile" style="border:0;border-top:3px solid var(--ink);box-shadow:none">
+                <span class="tile__icon">🛒</span><span class="tile__title">خرید جدید</span><span class="tile__hint">افزایش موجودی</span>
+            </a>
+            <a href="{% url 'faktor:ocr' %}" class="tile" style="border:0;border-top:3px solid var(--ink);border-inline-start:3px solid var(--ink);box-shadow:none">
+                <span class="tile__icon">📷</span><span class="tile__title">OCR فاکتور خرید</span><span class="tile__hint">بارگذاری عکس فاکتور</span>
+            </a>
+            {% endif %}
+            <a href="{% url 'product:l-product' %}" class="tile" style="border:0;border-top:3px solid var(--ink);box-shadow:none">
+                <span class="tile__icon">📦</span><span class="tile__title">کالاها</span><span class="tile__hint">قیمت، بارکد، موجودی</span>
+            </a>
+            {% if request.user.is_admin %}
+            <a href="{% url 'reports' %}" class="tile" style="border:0;border-top:3px solid var(--ink);border-inline-start:3px solid var(--ink);box-shadow:none">
+                <span class="tile__icon">📊</span><span class="tile__title">گزارش سود</span><span class="tile__hint">فروش در برابر خرید</span>
+            </a>
+            {% else %}
+            <a href="{% url 'product:c-product' %}" class="tile" style="border:0;border-top:3px solid var(--ink);border-inline-start:3px solid var(--ink);box-shadow:none">
+                <span class="tile__icon">➕</span><span class="tile__title">کالای جدید</span><span class="tile__hint">ثبت سریع کالا</span>
+            </a>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="brut-card">
+        <div class="brut-card__head">
+            <span class="brut-card__title">پیش‌نویس‌های باز</span>
+            <a href="{% url 'faktor:sell-list' %}?status=draft" class="text-sm" style="text-decoration:underline">همه</a>
+        </div>
+        {% if draft_invoices %}
+        <div class="stack">
+            {% for invoice in draft_invoices %}
+            <a href="{% url 'faktor:sell-edit' invoice.pk %}" class="row row--between" style="text-decoration:none;border-bottom:2px dashed var(--ink);padding-bottom:8px">
+                <span>
+                    <strong class="mono">{{ invoice.number }}</strong>
+                    <span class="text-xs muted"> · {{ invoice.customer|default:"بدون مشتری" }}</span>
+                </span>
+                <span class="mono text-sm">{{ invoice.total_price|money:shop }}</span>
+            </a>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <div class="icon">🗂️</div>
+            <p class="muted text-sm">پیش‌نویسی ندارید. با F6 هر فاکتور را ذخیره کنید.</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="brut-card">
+        <div class="brut-card__head">
+            <span class="brut-card__title">کم‌موجودی</span>
+            <span class="badge {% if low_stock_count %}badge--danger{% else %}badge--ok{% endif %}">{{ low_stock_count }}</span>
+        </div>
+        {% if low_stock %}
+        <div class="stack">
+            {% for product in low_stock %}
+            <a href="{% url 'product:e-product' product.pk %}" class="row row--between" style="text-decoration:none;border-bottom:2px dashed var(--ink);padding-bottom:8px">
+                <span>
+                    <strong>{{ product.name }}</strong>
+                    <span class="text-xs muted mono d-block">{{ product.serial_number }}</span>
+                </span>
+                <span class="badge badge--danger">{{ product.count }} {{ product.get_unit_display }}</span>
+            </a>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <div class="icon">✅</div>
+            <p class="muted text-sm">همه‌ی موجودی‌ها بالای آستانه‌ی هشدار هستند.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<div class="grid grid-4">
+    <a href="{% url 'product:l-product' %}?low=1" class="tile">
+        <span class="tile__icon">⚠️</span><span class="tile__title">هشدار موجودی</span><span class="tile__hint">{{ low_stock_count }} کالا زیر آستانه</span>
+    </a>
+    {% if request.user.is_admin %}
+    <a href="{% url 'settings' %}" class="tile">
+        <span class="tile__icon">⚙️</span><span class="tile__title">تنظیمات فروشگاه</span><span class="tile__hint">واحد پول، دلار، آستانه موجودی</span>
+    </a>
+    <a href="{% url 'faktor:buy-list' %}" class="tile">
+        <span class="tile__icon">📥</span><span class="tile__title">فاکتورهای خرید</span><span class="tile__hint">خرید ۳۰ روز اخیر: {{ buy_total_month|money:shop }}</span>
+    </a>
+    <a href="{% url 'user-list' %}" class="tile">
+        <span class="tile__icon">🔐</span><span class="tile__title">کاربران و نقش‌ها</span><span class="tile__hint">مدیر / اپراتور</span>
+    </a>
+    {% else %}
+    <a href="{% url 'faktor:sell-list' %}?status=completed" class="tile">
+        <span class="tile__icon">✅</span><span class="tile__title">فاکتورهای نهایی</span><span class="tile__hint">مرور و چاپ</span>
+    </a>
+    <a href="{% url 'product:c-product' %}" class="tile">
+        <span class="tile__icon">➕</span><span class="tile__title">ثبت کالا</span><span class="tile__hint">F8 در صفحه فاکتور</span>
+    </a>
+    <a href="{% url 'telegram-settings' %}" class="tile tile--disabled" aria-disabled="true">
+        <span class="tile__icon">📨</span><span class="tile__title">تلگرام</span><span class="tile__hint">به زودی</span>
+    </a>
+    {% endif %}
+</div>
+{% endblock %}

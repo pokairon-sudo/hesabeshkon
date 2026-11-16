@@ -1,0 +1,186 @@
+{% extends "base.html" %}
+{% load money jalali %}
+
+{% block title %}تنظیمات — {{ shop.shop_name }}{% endblock %}
+
+{% block content %}
+<div class="page-head">
+    <div>
+        <span class="kicker">مدیریت</span>
+        <h1>تنظیمات فروشگاه</h1>
+        <p class="page-head__desc">واحد نمایش قیمت، نرخ دلار، درصد سود پیش‌فرض و ارتباط با دیتابیس حسابدار.</p>
+    </div>
+    <a href="{% url 'reports' %}" class="brut-btn brut-btn--ghost">→ گزارش‌ها</a>
+</div>
+
+<div class="settings-grid">
+    <form method="post" class="brut-card">
+        {% csrf_token %}
+        {% if form.non_field_errors %}<div class="msg msg--error mb-2">{{ form.non_field_errors|striptags }}</div>{% endif %}
+        <div class="brut-card__head">
+            <span class="brut-card__title">مشخصات و پول</span>
+            <span class="badge badge--acid">{{ shop.currency_label }}</span>
+        </div>
+        <div class="form-grid">
+            <div class="form-field span-2">
+                <label for="{{ form.shop_name.id_for_label }}">{{ form.shop_name.label }}</label>
+                {{ form.shop_name }}
+                {% if form.shop_name.errors %}<div class="errorlist">{{ form.shop_name.errors|striptags }}</div>{% endif %}
+            </div>
+            <div class="form-field">
+                <label for="{{ form.phone.id_for_label }}">{{ form.phone.label }}</label>
+                {{ form.phone }}
+            </div>
+            <div class="form-field">
+                <label for="{{ form.address.id_for_label }}">{{ form.address.label }}</label>
+                {{ form.address }}
+            </div>
+            <div class="form-field">
+                <label for="{{ form.currency_unit.id_for_label }}">{{ form.currency_unit.label }}</label>
+                {{ form.currency_unit }}
+                <span class="helptext">{{ form.currency_unit.help_text }}</span>
+            </div>
+            <div class="form-field">
+                <label for="{{ form.usd_rate.id_for_label }}">{{ form.usd_rate.label }}</label>
+                {{ form.usd_rate }}
+                <span class="helptext">{{ form.usd_rate.help_text }}</span>
+                {% if form.usd_rate.errors %}<div class="errorlist">{{ form.usd_rate.errors|striptags }}</div>{% endif %}
+            </div>
+            <div class="form-field">
+                <label class="check-row">{{ form.show_usd }} {{ form.show_usd.label }}</label>
+                <span class="helptext">در فهرست کالاها و فاکتورها معادل دلاری هم دیده می‌شود.</span>
+            </div>
+            <div class="form-field">
+                <label for="{{ form.default_markup_percent.id_for_label }}">{{ form.default_markup_percent.label }}</label>
+                {{ form.default_markup_percent }}
+                <span class="helptext">{{ form.default_markup_percent.help_text }}</span>
+            </div>
+            <div class="form-field">
+                <label for="{{ form.low_stock_threshold.id_for_label }}">{{ form.low_stock_threshold.label }}</label>
+                {{ form.low_stock_threshold }}
+                <span class="helptext">{{ form.low_stock_threshold.help_text }}</span>
+            </div>
+            <div class="form-field">
+                <label for="{{ form.receipt_footer.id_for_label }}">{{ form.receipt_footer.label }}</label>
+                {{ form.receipt_footer }}
+            </div>
+        </div>
+        <div class="row mt-3">
+            <button type="submit" class="brut-btn brut-btn--primary brut-btn--lg">💾 ذخیره تنظیمات</button>
+            <span class="text-xs muted">آخرین تغییر: {{ shop.updated_at|jalali_datetime }}</span>
+        </div>
+    </form>
+
+    <div class="stack">
+        <div class="brut-card brut-card--acid">
+            <div class="brut-card__head" style="border-color:var(--ink)">
+                <span class="brut-card__title">مبدل ریال / تومان / دلار</span>
+            </div>
+            <div class="form-field">
+                <label for="conv-amount">مبلغ</label>
+                <input id="conv-amount" type="number" min="0" step="0.01" dir="ltr" value="100000">
+            </div>
+            <div class="row" style="align-items:flex-end">
+                <div class="form-field" style="flex:1">
+                    <label for="conv-from">از</label>
+                    <select id="conv-from">
+                        <option value="toman">تومان</option>
+                        <option value="rial">ریال</option>
+                        <option value="usd">دلار</option>
+                    </select>
+                </div>
+                <div style="padding-bottom:14px;font-weight:900">→</div>
+                <div class="form-field" style="flex:1">
+                    <label for="conv-to">به</label>
+                    <select id="conv-to">
+                        <option value="usd">دلار</option>
+                        <option value="toman">تومان</option>
+                        <option value="rial">ریال</option>
+                    </select>
+                </div>
+            </div>
+            <div class="converter-out" id="conv-result">—</div>
+            <p class="helptext mt-1">نرخ دلار از تنظیمات: <b class="mono">{{ shop.usd_rate }}</b> تومان</p>
+        </div>
+
+        <div class="brut-card">
+            <div class="brut-card__head">
+                <span class="brut-card__title">دیتابیس حسابدار</span>
+                <span class="badge {% if unaccounted_sell or unaccounted_buy %}badge--danger{% else %}badge--ok{% endif %}">
+                    {% if unaccounted_sell or unaccounted_buy %}در انتظار{% else %}همگام{% endif %}
+                </span>
+            </div>
+            <p class="text-sm" style="font-weight:600">
+                فاکتورهای فروش و خرید نهایی‌شده در یک دیتابیس SQLite جداگانه
+                (<span class="mono">accountant.sqlite3</span>) ثبت می‌شوند.
+            </p>
+            <div class="grid grid-2 mt-2">
+                <div class="brut-card brut-card--flat" style="padding:10px">
+                    <div class="kpi__label">فروش در انتظار</div>
+                    <div class="mono" style="font-size:1.3rem;font-weight:900">{{ unaccounted_sell }}</div>
+                </div>
+                <div class="brut-card brut-card--flat" style="padding:10px">
+                    <div class="kpi__label">خرید در انتظار</div>
+                    <div class="mono" style="font-size:1.3rem;font-weight:900">{{ unaccounted_buy }}</div>
+                </div>
+            </div>
+            <form method="post" action="{% url 'sync-accountant' %}" class="mt-2">
+                {% csrf_token %}
+                <button type="submit" class="brut-btn brut-btn--block">↻ ارسال دوباره‌ی فاکتورهای در انتظار</button>
+            </form>
+            <p class="helptext mt-2">
+                اگر خطا گرفت، روی سرور اجرا کنید:
+                <br><span class="mono">python manage.py migrate --database=accountant</span>
+            </p>
+        </div>
+
+        <div class="brut-card brut-card--flat">
+            <div class="brut-card__title mb-1">امنیت</div>
+            <p class="helptext">
+                فقط مدیر و اپراتور به سایت دسترسی دارند. برای محیط VPS حتماً
+                <span class="mono">DJANGO_DEBUG=0</span>،
+                <span class="mono">DJANGO_SECRET_KEY</span> و
+                <span class="mono">DJANGO_ALLOWED_HOSTS</span> را تنظیم کنید.
+            </p>
+        </div>
+    </div>
+</div>
+
+<script type="application/json" id="settings-rates">{"usdRate": "{{ shop.usd_rate|default:0 }}"}</script>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  const rate = Math.max(0, Number(document.getElementById("settings-rates").textContent ? JSON.parse(document.getElementById("settings-rates").textContent).usdRate : 0));
+  const amountEl = document.getElementById("conv-amount");
+  const fromEl = document.getElementById("conv-from");
+  const toEl = document.getElementById("conv-to");
+  const out = document.getElementById("conv-result");
+
+  function toToman(value, unit) {
+    if (unit === "rial") return value / 10;
+    if (unit === "usd") return value * rate;
+    return value;
+  }
+  function fromToman(value, unit) {
+    if (unit === "rial") return value * 10;
+    if (unit === "usd") return rate > 0 ? value / rate : NaN;
+    return value;
+  }
+  function render() {
+    const amount = Number(amountEl.value || 0);
+    const toman = toToman(amount, fromEl.value);
+    const result = fromToman(toman, toEl.value);
+    if (!Number.isFinite(result) || (toEl.value === "usd" && rate <= 0)) {
+      out.textContent = "نرخ دلار را در تنظیمات وارد کنید.";
+      return;
+    }
+    const label = { toman: "تومان", rial: "ریال", usd: "دلار" }[toEl.value];
+    out.textContent = new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 }).format(result) + " " + label;
+  }
+  [amountEl, fromEl, toEl].forEach(function (el) { el.addEventListener("input", render); el.addEventListener("change", render); });
+  render();
+})();
+</script>
+{% endblock %}

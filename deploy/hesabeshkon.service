@@ -1,0 +1,19 @@
+[Unit]
+Description=Hesabeshkon cafe POS
+After=network.target
+
+[Service]
+User=hesab
+Group=www-data
+WorkingDirectory=/var/www/hesabeshkon/home
+EnvironmentFile=/var/www/hesabeshkon/.env
+ExecStart=/var/www/hesabeshkon/home/.venv/bin/gunicorn home.wsgi:application \
+    --bind 127.0.0.1:8001 \
+    --workers 2 \
+    --timeout 300
+Restart=always
+RestartSec=3
+UMask=007
+
+[Install]
+WantedBy=multi-user.target

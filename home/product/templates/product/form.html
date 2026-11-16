@@ -1,0 +1,165 @@
+{% extends "base.html" %}
+{% load money %}
+
+{% block title %}{% if is_new %}کالای جدید{% else %}ویرایش {{ product.name }}{% endif %} — {{ shop.shop_name }}{% endblock %}
+
+{% block content %}
+<div class="page-head">
+    <div>
+        <span class="kicker">کالا</span>
+        <h1>{% if is_new %}ثبت کالای جدید{% else %}ویرایش «{{ product.name }}»{% endif %}</h1>
+        <p class="page-head__desc">بارکد را اسکن کنید یا خالی بگذارید تا سیستم خودش یک بارکد ۱۳ رقمی بسازد.</p>
+    </div>
+    <a href="{% url 'product:l-product' %}" class="brut-btn brut-btn--ghost">→ فهرست کالاها</a>
+</div>
+
+{% if form.non_field_errors %}
+<div class="msg msg--error mb-2">{{ form.non_field_errors|striptags }}</div>
+{% endif %}
+
+<form method="post" class="brut-card" style="max-width:900px">
+    {% csrf_token %}
+    <div class="form-grid">
+        <div class="form-field span-2">
+            <label for="{{ form.name.id_for_label }}">{{ form.name.label }} *</label>
+            {{ form.name }}
+            {% if form.name.errors %}<div class="errorlist">{{ form.name.errors|striptags }}</div>{% endif %}
+        </div>
+
+        <div class="form-field">
+            <label for="{{ form.serial_number.id_for_label }}">{{ form.serial_number.label }}</label>
+            <div class="row" style="flex-wrap:nowrap">
+                {{ form.serial_number }}
+                <button type="button" id="generate-barcode" class="brut-btn brut-btn--sm nowrap">ساخت خودکار</button>
+            </div>
+            <span class="helptext">{{ form.serial_number.help_text }}</span>
+            {% if form.serial_number.errors %}<div class="errorlist">{{ form.serial_number.errors|striptags }}</div>{% endif %}
+        </div>
+
+        <div class="form-field">
+            <label for="{{ form.unit.id_for_label }}">{{ form.unit.label }}</label>
+            {{ form.unit }}
+        </div>
+
+        <div class="form-field">
+            <label for="{{ form.tag.id_for_label }}">{{ form.tag.label }}</label>
+            {{ form.tag }}
+            <span class="helptext">مثلاً نوشیدنی گرم، دسر، بسته‌بندی</span>
+        </div>
+
+        <div class="form-field">
+            <label for="{{ form.count.id_for_label }}">{{ form.count.label }}</label>
+            {{ form.count }}
+            <span class="helptext">موجودی فعلی انبار</span>
+            {% if form.count.errors %}<div class="errorlist">{{ form.count.errors|striptags }}</div>{% endif %}
+        </div>
+
+        <div class="form-field">
+            <label for="{{ form.price_for_company.id_for_label }}">{{ form.price_for_company.label }}</label>
+            {{ form.price_for_company }}
+            <span class="helptext">قیمتی که خودتان می‌خرید</span>
+            {% if form.price_for_company.errors %}<div class="errorlist">{{ form.price_for_company.errors|striptags }}</div>{% endif %}
+        </div>
+
+        <div class="form-field">
+            <label for="{{ form.price_for_customer.id_for_label }}">{{ form.price_for_customer.label }}</label>
+            {{ form.price_for_customer }}
+            <span class="helptext">قیمت روی برچسب برای مشتری</span>
+            {% if form.price_for_customer.errors %}<div class="errorlist">{{ form.price_for_customer.errors|striptags }}</div>{% endif %}
+        </div>
+
+        <div class="form-field">
+            <label for="{{ form.offer_type.id_for_label }}">{{ form.offer_type.label }}</label>
+            {{ form.offer_type }}
+        </div>
+
+        <div class="form-field">
+            <label for="{{ form.offer_value.id_for_label }}">{{ form.offer_value.label }}</label>
+            {{ form.offer_value }}
+            <span class="helptext">{{ form.offer_value.help_text }}</span>
+            {% if form.offer_value.errors %}<div class="errorlist">{{ form.offer_value.errors|striptags }}</div>{% endif %}
+        </div>
+
+        <div class="form-field span-2">
+            <label class="check-row">{{ form.is_active }} {{ form.is_active.label }} (در فهرست و جستجو نمایش داده شود)</label>
+        </div>
+    </div>
+
+    <div class="brut-card brut-card--acid mt-3" style="box-shadow:none">
+        <div class="row row--between">
+            <span style="font-weight:900">پیش‌نمایش قیمت</span>
+            <span id="price-preview" class="mono" style="font-weight:900">—</span>
+        </div>
+        <div class="text-sm mt-1" id="profit-preview" style="font-weight:700"></div>
+    </div>
+
+    <div class="row mt-3">
+        <button type="submit" class="brut-btn brut-btn--primary brut-btn--lg">💾 ذخیره کالا</button>
+        <a href="{% url 'product:l-product' %}" class="brut-btn brut-btn--ghost">انصراف</a>
+        {% if not is_new and request.user.is_admin %}
+        <span class="spacer"></span>
+        <button type="submit" form="delete-product-form" class="brut-btn brut-btn--danger">حذف کالا</button>
+        {% endif %}
+    </div>
+</form>
+
+{% if not is_new and request.user.is_admin %}
+<form id="delete-product-form" method="post" action="{% url 'product:d-product' product.pk %}"
+      data-confirm="کالای «{{ product.name }}» حذف شود؟ فاکتورهای قبلی حفظ می‌شوند.">
+    {% csrf_token %}
+</form>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  const form = document.querySelector("form[method=post]");
+  const barcode = document.getElementById("id_serial_number");
+  const gen = document.getElementById("generate-barcode");
+  const buy = document.getElementById("id_price_for_company");
+  const sell = document.getElementById("id_price_for_customer");
+  const offer = document.getElementById("id_offer_value");
+  const offerType = document.getElementById("id_offer_type");
+  const preview = document.getElementById("price-preview");
+  const profit = document.getElementById("profit-preview");
+
+  function money(value) {
+    return window.HS.formatMoney(value || 0);
+  }
+  function update() {
+    const buyPrice = Number(buy.value || 0);
+    const sellPrice = Number(sell.value || 0);
+    let discount = 0;
+    if (offerType.value === "percent") {
+      discount = sellPrice * (Number(offer.value || 0) / 100);
+    } else {
+      discount = Number(offer.value || 0);
+    }
+    const final = Math.max(0, sellPrice - discount);
+    preview.textContent = money(final);
+    const unitProfit = final - buyPrice;
+    const margin = buyPrice > 0 ? (unitProfit / buyPrice) * 100 : 0;
+    profit.textContent = "سود هر واحد: " + money(unitProfit) + " · حاشیه سود: " + margin.toFixed(1) + "%";
+    profit.style.color = unitProfit < 0 ? "var(--red)" : "inherit";
+  }
+  [buy, sell, offer, offerType].forEach(function (el) {
+    el.addEventListener("input", update);
+    el.addEventListener("change", update);
+  });
+  gen?.addEventListener("click", async function () {
+    gen.disabled = true;
+    try {
+      const data = await window.HS.fetchJSON("{% url 'product:new-barcode' %}");
+      barcode.value = data.barcode;
+      window.HS.toast("بارکد ساخته شد.", "success");
+    } catch (error) {
+      window.HS.toast(error.message, "error");
+    } finally {
+      gen.disabled = false;
+    }
+  });
+  update();
+})();
+</script>
+{% endblock %}

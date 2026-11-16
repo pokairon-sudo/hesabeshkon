@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}{{ title }} — {{ shop.shop_name }}{% endblock %}
+{% block content %}
+<div class="brut-card" style="max-width:680px;margin:40px auto;background:var(--acid)">
+    <span class="kicker">به زودی</span>
+    <h1 class="mb-2">{{ title }}</h1>
+    <p class="mb-3" style="font-weight:700">{{ description }}</p>
+    <a href="{% url 'home' %}" class="brut-btn brut-btn--dark">بازگشت به داشبورد</a>
+</div>
+{% endblock %}

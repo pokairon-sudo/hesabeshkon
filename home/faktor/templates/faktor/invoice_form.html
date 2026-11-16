@@ -1,0 +1,222 @@
+{% extends "base.html" %}
+{% load money static jalali %}
+
+{% block title %}{% if mode == "sell" %}فاکتور فروش{% else %}فاکتور خرید{% endif %} — {{ shop.shop_name }}{% endblock %}
+
+{% block content %}
+<div id="invoice-app"
+     data-mode="{{ mode }}"
+     data-submit-url="{{ submit_url }}"
+     data-search-url="{{ search_url }}"
+     data-product-create-url="{{ product_create_url }}"
+     data-new-barcode-url="{{ new_barcode_url }}"
+     data-product-edit-template="{% url 'product:e-product' 0 %}"
+     data-invoice-id="{% if invoice %}{{ invoice.pk }}{% endif %}">
+    {{ cart_seed|json_script:"cart-seed" }}
+
+    <div class="page-head" style="margin-bottom:14px">
+        <div>
+            <span class="kicker">{% if mode == "sell" %}صندوق فروش{% else %}ورود کالا{% endif %}</span>
+            <h1>{% if invoice %}ادامه‌ی {% if mode == "sell" %}فاکتور فروش{% else %}فاکتور خرید{% endif %}{% else %}فاکتور {% if mode == "sell" %}فروش{% else %}خرید{% endif %} جدید{% endif %}</h1>
+            <p class="page-head__desc">
+                {% if mode == "sell" %}
+                نام یا بارکد را بزنید؛ موجودی خودکار بررسی می‌شود. قیمت فروش از سرور خوانده می‌شود.
+                {% else %}
+                قیمت خرید هر ردیف را خودتان وارد کنید؛ با نهایی‌شدن، موجودی و قیمت خرید کالا به‌روز می‌شود.
+                {% endif %}
+            </p>
+        </div>
+        <div class="row">
+            <a href="{% if mode == 'sell' %}{% url 'faktor:sell-list' %}{% else %}{% url 'faktor:buy-list' %}{% endif %}" class="brut-btn brut-btn--ghost">→ فهرست</a>
+            {% if mode == "buy" %}
+            <a href="{% url 'faktor:ocr' %}" class="brut-btn">📷 OCR فاکتور</a>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="invoice-titlebar">
+        <div class="row" style="gap:10px">
+            <h2 id="invoice-status" class="badge {% if invoice and invoice.is_completed %}badge--ok{% else %}badge--draft{% endif %}">
+                {% if invoice %}{{ invoice.get_status_display }}{% else %}جدید{% endif %}
+            </h2>
+            <span class="meta" id="invoice-number">{% if invoice %}{{ invoice.number }}{% else %}شماره پس از ذخیره{% endif %}</span>
+        </div>
+        <div class="meta">تاریخ: {{ today|jalali }} · کاربر: {{ request.user.username }}</div>
+    </div>
+
+    <div class="invoice-layout">
+        <div class="invoice-main stack">
+            <div class="brut-card">
+                <div class="search-box">
+                    <label for="product-search">افزودن کالا با نام یا بارکد</label>
+                    <input id="product-search" type="text" autocomplete="off" autofocus
+                           placeholder="نام کالا را بنویسید یا بارکد را اسکن کنید و Enter بزنید…">
+                    <div id="search-results" class="search-results hidden" role="listbox"></div>
+                </div>
+                <div class="row mt-2" style="justify-content:space-between">
+                    <span class="text-xs muted">
+                        <span class="shortcut">Enter</span> افزودن اولین نتیجه
+                    </span>
+                    <div class="row" style="gap:6px">
+                        <button type="button" class="brut-btn brut-btn--sm" data-open-product>＋ کالای جدید</button>
+                        <button type="button" id="btn-product" class="brut-btn brut-btn--sm">✎ ویرایش کالا (F8)</button>
+                    </div>
+                </div>
+
+                <div class="table-wrap mt-2" style="box-shadow:none">
+                    <table class="brut-table hidden" id="cart-table">
+                        <thead>
+                            <tr>
+                                <th>کالا</th>
+                                <th style="width:150px">تعداد</th>
+                                <th class="num">{% if mode == "sell" %}قیمت واحد{% else %}قیمت خرید واحد{% endif %}</th>
+                                <th class="num">جمع ردیف</th>
+                                <th style="width:50px"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="cart-body"></tbody>
+                    </table>
+                </div>
+                <div id="cart-empty" class="table-empty">
+                    <div class="icon" style="font-size:2rem">🛒</div>
+                    هنوز کالایی اضافه نشده است. نام یا بارکد را جستجو کنید.
+                </div>
+            </div>
+
+            <div class="action-bar no-print">
+                <button type="button" class="brut-btn" data-save-action="draft" id="btn-draft">
+                    <span class="shortcut">F6</span> ذخیره پیش‌نویس
+                </button>
+                <button type="button" class="brut-btn brut-btn--primary" data-save-action="finalize" id="btn-finalize">
+                    <span class="shortcut">F7</span> نهایی + ارسال به حسابدار
+                </button>
+                <button type="button" class="brut-btn brut-btn--dark" data-save-action="print" id="btn-print">
+                    <span class="shortcut">F9</span> چاپ فوری
+                </button>
+                <span class="spacer"></span>
+                <span class="text-xs muted">پیش‌نویس موجودی را کم نمی‌کند؛ فقط F7 موجودی را نهایی می‌کند.</span>
+            </div>
+        </div>
+
+        <aside class="invoice-side stack">
+            <div class="brut-card">
+                {% if mode == "sell" %}
+                <div class="form-field">
+                    <label for="customer-input">مشتری</label>
+                    <input id="customer-input" type="text" value="{{ customer_value }}" placeholder="نام مشتری (اختیاری)">
+                </div>
+                {% else %}
+                <div class="form-field">
+                    <label for="supplier-input">تأمین‌کننده</label>
+                    <input id="supplier-input" type="text" value="{{ supplier_value }}" placeholder="نام تأمین‌کننده (اختیاری)">
+                </div>
+                {% endif %}
+
+                <div class="form-field">
+                    <label for="description-input">توضیحات</label>
+                    <textarea id="description-input" rows="2" placeholder="یادداشت روی فاکتور…">{{ description_value }}</textarea>
+                </div>
+
+                <div class="invoice-total">
+                    <span>جمع کل</span>
+                    <span class="invoice-total__value" id="cart-total">{{ 0|money:shop }}</span>
+                </div>
+                <div class="text-xs muted mt-1"><span id="cart-line-count">0</span> ردیف</div>
+            </div>
+
+            <div class="brut-card">
+                <div class="brut-card__title mb-2">{% if mode == "sell" %}پرداخت و صدا{% else %}افزودن سریع{% endif %}</div>
+                {% if mode == "sell" %}
+                <button type="button" id="btn-voice" class="brut-btn brut-btn--block mic-btn" title="افزودن کالا با صدا">
+                    🎤 افزودن با صدا
+                </button>
+                <div id="voice-hint" class="helptext mt-1">مثلاً «سه تا کاپوچینو اضافه کن». مرورگر Chrome/Edge لازم است.</div>
+                {% endif %}
+                <button type="button" id="btn-product-side" class="brut-btn brut-btn--block mt-2" data-open-product>＋ کالای جدید (F8)</button>
+            </div>
+
+            <div class="brut-card brut-card--flat" style="padding:12px">
+                <div class="shortcut-legend" style="flex-direction:column;align-items:flex-start;gap:6px">
+                    <span><span class="shortcut">F6</span> ذخیره پیش‌نویس و ادامه بعداً</span>
+                    <span><span class="shortcut">F7</span> نهایی‌سازی + دیتابیس حسابدار</span>
+                    <span><span class="shortcut">F8</span> ساخت/ویرایش کالا</span>
+                    <span><span class="shortcut">F9</span> چاپ بدون هیچ پرسشی</span>
+                </div>
+            </div>
+        </aside>
+    </div>
+</div>
+
+<!-- مودال ساخت/ویرایش سریع کالا -->
+<div class="brut-modal-backdrop" id="product-modal" aria-hidden="true">
+    <div class="brut-modal" role="dialog" aria-modal="true" aria-labelledby="product-modal-title">
+        <div class="brut-modal__head">
+            <span class="brut-modal__title" id="product-modal-title">کالای جدید</span>
+            <button type="button" class="icon-btn" data-close-modal="product-modal" aria-label="بستن">✕</button>
+        </div>
+        <div id="product-form-errors"></div>
+        <form id="product-form" method="post" action="{{ product_create_url }}">
+            {% csrf_token %}
+            <div class="form-grid">
+                <div class="form-field span-2">
+                    <label for="pf-name">نام کالا *</label>
+                    <input id="pf-name" name="name" type="text" required placeholder="مثلاً کاپوچینو">
+                </div>
+                <div class="form-field">
+                    <label for="pf-barcode">بارکد</label>
+                    <div class="row" style="flex-wrap:nowrap">
+                        <input id="pf-barcode" name="serial_number" type="text" dir="ltr" placeholder="خالی = ساخت خودکار">
+                        <button type="button" class="brut-btn brut-btn--sm nowrap" id="btn-generate-barcode">ساخت</button>
+                    </div>
+                </div>
+                <div class="form-field">
+                    <label for="pf-tag">دسته/تگ</label>
+                    <input id="pf-tag" name="tag" type="text" placeholder="مثلاً نوشیدنی گرم">
+                </div>
+                <div class="form-field">
+                    <label for="pf-unit">واحد</label>
+                    <select id="pf-unit" name="unit">
+                        <option value="piece">عدد</option>
+                        <option value="kg">کیلوگرم</option>
+                        <option value="pack">بسته</option>
+                    </select>
+                </div>
+                <div class="form-field">
+                    <label for="pf-buy">قیمت خرید (تومان)</label>
+                    <input id="pf-buy" name="price_for_company" type="number" min="0" step="0.01" dir="ltr" value="0">
+                </div>
+                <div class="form-field">
+                    <label for="pf-sell">قیمت فروش (تومان)</label>
+                    <input id="pf-sell" name="price_for_customer" type="number" min="0" step="0.01" dir="ltr" value="0">
+                </div>
+                <div class="form-field">
+                    <label for="pf-count">موجودی</label>
+                    <input id="pf-count" name="count" type="number" min="0" step="1" dir="ltr" value="0">
+                </div>
+                <div class="form-field">
+                    <label for="pf-offer">مقدار تخفیف</label>
+                    <input id="pf-offer" name="offer_value" type="number" min="0" step="0.01" dir="ltr" value="0">
+                </div>
+                <div class="form-field">
+                    <label for="pf-offer-type">نوع تخفیف</label>
+                    <select id="pf-offer-type" name="offer_type">
+                        <option value="percent">درصدی</option>
+                        <option value="price">مبلغ ثابت (تومان)</option>
+                    </select>
+                </div>
+                <div class="form-field span-2">
+                    <label class="check-row"><input type="checkbox" name="is_active" checked> فعال باشد</label>
+                </div>
+            </div>
+            <div class="row mt-2" style="justify-content:flex-end">
+                <button type="button" class="brut-btn brut-btn--ghost" data-close-modal="product-modal">انصراف</button>
+                <button type="submit" class="brut-btn brut-btn--primary" id="product-submit">ساخت و افزودن</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{% static 'js/invoice.js' %}"></script>
+{% endblock %}

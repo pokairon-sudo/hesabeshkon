@@ -1,0 +1,247 @@
+{% extends "base.html" %}
+
+{% block title %}بازبینی ردیف‌های OCR — {{ shop.shop_name }}{% endblock %}
+
+{% block content %}
+<div class="page-head">
+    <div>
+        <span class="kicker">مرحله ۲ از ۲</span>
+        <h1>بازبینی ردیف‌ها</h1>
+        <p class="page-head__desc">
+            نام، بارکد، تعداد و قیمت خرید را بررسی کنید. ردیف‌های نارنجی یعنی OCR قیمت را نخوانده و نیاز به اصلاح دارند.
+            کالاهای ناشناس با بارکد یا نام ساخته می‌شوند.
+        </p>
+    </div>
+    <a href="{% url 'faktor:ocr' %}" class="brut-btn brut-btn--ghost">← عکس دیگری بفرست</a>
+</div>
+
+<form method="post" action="{% url 'faktor:ocr-confirm' %}" id="ocr-confirm-form">
+    {% csrf_token %}
+    <input type="hidden" name="rows_json" id="rows-json" value="{{ rows_json }}">
+    <div class="ocr-grid">
+        <div class="stack">
+            <div class="brut-card">
+                <div class="form-field">
+                    <label for="supplier">تأمین‌کننده</label>
+                    <input id="supplier" name="supplier" type="text" placeholder="نام تأمین‌کننده (اختیاری)">
+                </div>
+                <div class="form-field">
+                    <label for="description">توضیحات</label>
+                    <textarea id="description" name="description" rows="2" placeholder="مثلاً فاکتور خرید هفته اول"></textarea>
+                </div>
+                <div class="brut-card brut-card--acid" style="box-shadow:none">
+                    <div class="row row--between">
+                        <span style="font-weight:900">تعداد ردیف</span>
+                        <span id="row-count" class="mono" style="font-weight:900">{{ rows|length }}</span>
+                    </div>
+                    <div class="row row--between mt-1">
+                        <span style="font-weight:900">جمع خرید</span>
+                        <span id="rows-total" class="mono" style="font-weight:900">—</span>
+                    </div>
+                </div>
+                <button type="submit" class="brut-btn brut-btn--primary brut-btn--block brut-btn--lg mt-3" id="confirm-btn">
+                    ✔ تأیید و ثبت فاکتور خرید
+                </button>
+                <p class="helptext mt-1">با تأیید، موجودی افزایش می‌یابد و فاکتور در دیتابیس حسابدار ثبت می‌شود.</p>
+            </div>
+
+            {% if receipt %}
+            <div class="brut-card" style="box-shadow:none">
+                <div class="row row--between mb-2">
+                    <div class="brut-card__title">اعتبارسنجی حسابی</div>
+                    <span class="mono" style="font-weight:900">
+                        {% if receipt.status == 'ok' %}✅ حساب‌ها جور است
+                        {% elif receipt.status == 'repaired' %}🛠 اصلاح‌شده
+                        {% else %}⚠ نیاز به بازبینی{% endif %}
+                    </span>
+                </div>
+                <div class="table-wrap" style="box-shadow:none">
+                    <table class="brut-table" style="min-width:0">
+                        <tbody>
+                            <tr><td>منبع خواندن</td><td class="mono">{{ receipt.provider }}</td></tr>
+                            {% if receipt.vendor %}<tr><td>فروشنده</td><td>{{ receipt.vendor }}</td></tr>{% endif %}
+                            {% if receipt.number %}<tr><td>شماره فاکتور</td><td class="mono">{{ receipt.number }}</td></tr>{% endif %}
+                            {% if receipt.date %}<tr><td>تاریخ</td><td class="mono">{{ receipt.date|date:"Y-m-d" }}</td></tr>{% endif %}
+                            <tr><td>جمع محاسبه‌شده</td><td class="mono">{{ receipt.computed_total_display }}</td></tr>
+                            {% if receipt.printed_total_display %}
+                            <tr><td>جمع چاپ‌شده</td><td class="mono">{{ receipt.printed_total_display }}</td></tr>
+                            {% endif %}
+                            {% if receipt.is_weighted %}
+                            <tr>
+                                <td>وزن کل</td>
+                                <td class="mono">{{ receipt.computed_weight }} kg{% if receipt.printed_weight %} (چاپ‌شده: {{ receipt.printed_weight }}){% endif %}</td>
+                            </tr>
+                            {% endif %}
+                            <tr><td>اطمینان</td><td class="mono">{{ receipt.confidence }}٪</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                {% if receipt.warnings %}
+                <ul class="helptext" style="margin:10px 0 0;padding-inline-start:18px;line-height:1.9">
+                    {% for warning in receipt.warnings %}<li>{{ warning }}</li>{% endfor %}
+                </ul>
+                {% endif %}
+                {% if receipt.is_weighted %}
+                <p class="helptext mt-2">
+                    ردیف‌های وزنی به‌صورت «۱ بسته با مبلغ همان ردیف» ثبت می‌شوند تا جمع فاکتور
+                    با مبلغ چاپ‌شده جور بماند.
+                </p>
+                {% endif %}
+            </div>
+            {% endif %}
+
+            {% if raw_text %}
+            <details class="brut-card brut-card--flat">
+                <summary style="cursor:pointer;font-weight:800">متن خام OCR (برای مقایسه)</summary>
+                <pre class="raw-text mt-2">{{ raw_text }}</pre>
+            </details>
+            {% endif %}
+        </div>
+
+        <div class="brut-card" style="min-width:0">
+            <div class="row row--between mb-2">
+                <div class="brut-card__title">ردیف‌ها</div>
+                <button type="button" class="brut-btn brut-btn--sm" id="add-row">＋ ردیف جدید</button>
+            </div>
+            <div class="table-wrap" style="box-shadow:none">
+                <table class="brut-table ocr-preview-table" style="min-width:760px">
+                    <thead>
+                        <tr>
+                            <th style="width:34px">#</th>
+                            <th>نام کالا</th>
+                            <th style="width:170px">بارکد</th>
+                            <th style="width:90px">تعداد</th>
+                            <th style="width:130px">قیمت خرید</th>
+                            <th style="width:120px">جمع</th>
+                            <th style="width:44px"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="rows-body">
+                        {% for row in rows %}
+                        <tr data-row{% if row.needs_review %} style="background:#fff3bf" title="قیمت OCR خوانده نشد؛ اصلاح کنید"{% endif %}>
+                            <td class="mono row-index">{{ forloop.counter }}</td>
+                            <td><input type="text" data-name value="{{ row.name }}" placeholder="نام کالا"></td>
+                            <td><input type="text" data-barcode value="{{ row.barcode }}" dir="ltr" placeholder="اختیاری"></td>
+                            <td><input type="number" data-qty value="{{ row.quantity }}" min="1" step="1" dir="ltr"></td>
+                            <td><input type="number" data-price value="{{ row.unit_price }}" min="0" step="0.01" dir="ltr"></td>
+                            <td class="mono" data-line-total>—</td>
+                            <td><button type="button" class="icon-btn icon-btn--danger" data-remove-row aria-label="حذف">✕</button></td>
+                        </tr>
+                        {% empty %}
+                        <tr data-empty><td colspan="7" class="table-empty">ردیفی نیست؛ با «ردیف جدید» اضافه کنید.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <p class="helptext mt-2">
+                اگر کالایی با بارکد یا نام یکسان وجود داشته باشد، همان کالا به‌روز می‌شود؛ در غیر این صورت کالای جدید ساخته می‌شود
+                و قیمت فروش آن با درصد سود پیش‌فرض تنظیمات محاسبه می‌گردد.
+            </p>
+        </div>
+    </div>
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  const body = document.getElementById("rows-body");
+  const form = document.getElementById("ocr-confirm-form");
+  const jsonInput = document.getElementById("rows-json");
+  const countEl = document.getElementById("row-count");
+  const totalEl = document.getElementById("rows-total");
+
+  function rows() {
+    return Array.from(body.querySelectorAll("tr[data-row]"));
+  }
+
+  function renumber() {
+    rows().forEach(function (row, index) {
+      row.querySelector(".row-index").textContent = String(index + 1);
+    });
+    countEl.textContent = String(rows().length);
+    updateTotals();
+  }
+
+  function updateTotals() {
+    let total = 0;
+    rows().forEach(function (row) {
+      const qty = Number(row.querySelector("[data-qty]").value || 0);
+      const price = Number(row.querySelector("[data-price]").value || 0);
+      const line = qty * price;
+      total += line;
+      row.querySelector("[data-line-total]").textContent = window.HS.formatMoney(line);
+    });
+    totalEl.textContent = window.HS.formatMoney(total);
+  }
+
+  function addRow(values) {
+    const data = values || {};
+    const empty = body.querySelector("[data-empty]");
+    if (empty) empty.remove();
+    const tr = document.createElement("tr");
+    tr.dataset.row = "1";
+    tr.innerHTML =
+      '<td class="mono row-index"></td>' +
+      '<td><input type="text" data-name placeholder="نام کالا"></td>' +
+      '<td><input type="text" data-barcode dir="ltr" placeholder="اختیاری"></td>' +
+      '<td><input type="number" data-qty min="1" step="1" dir="ltr" value="1"></td>' +
+      '<td><input type="number" data-price min="0" step="0.01" dir="ltr" value="0"></td>' +
+      '<td class="mono" data-line-total>—</td>' +
+      '<td><button type="button" class="icon-btn icon-btn--danger" data-remove-row aria-label="حذف">✕</button></td>';
+    tr.querySelector("[data-name]").value = data.name || "";
+    tr.querySelector("[data-barcode]").value = data.barcode || "";
+    tr.querySelector("[data-qty]").value = data.quantity || 1;
+    tr.querySelector("[data-price]").value = data.unit_price || 0;
+    body.appendChild(tr);
+    renumber();
+  }
+
+  body.addEventListener("input", function (event) {
+    if (event.target.matches("[data-qty], [data-price]")) updateTotals();
+  });
+
+  body.addEventListener("click", function (event) {
+    const button = event.target.closest("[data-remove-row]");
+    if (!button) return;
+    button.closest("tr").remove();
+    if (!rows().length) {
+      const tr = document.createElement("tr");
+      tr.dataset.empty = "1";
+      tr.innerHTML = '<td colspan="7" class="table-empty">ردیفی نیست؛ با «ردیف جدید» اضافه کنید.</td>';
+      body.appendChild(tr);
+    }
+    renumber();
+  });
+
+  document.getElementById("add-row").addEventListener("click", function () {
+    addRow();
+  });
+
+  form.addEventListener("submit", function (event) {
+    const data = [];
+    rows().forEach(function (row) {
+      const name = row.querySelector("[data-name]").value.trim();
+      const barcode = row.querySelector("[data-barcode]").value.trim();
+      const qty = parseInt(row.querySelector("[data-qty]").value, 10);
+      const price = parseFloat(row.querySelector("[data-price]").value);
+      if (!name && !barcode) return;
+      if (!Number.isFinite(qty) || qty < 1) return;
+      if (!Number.isFinite(price) || price < 0) return;
+      data.push({ name: name, barcode: barcode, quantity: qty, unit_price: price });
+    });
+    if (!data.length) {
+      event.preventDefault();
+      window.HS.toast("حداقل یک ردیف معتبر لازم است.", "warning");
+      return;
+    }
+    jsonInput.value = JSON.stringify(data);
+    const button = document.getElementById("confirm-btn");
+    button.disabled = true;
+    button.textContent = "در حال ثبت…";
+  });
+
+  renumber();
+})();
+</script>
+{% endblock %}

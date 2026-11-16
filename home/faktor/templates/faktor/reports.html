@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+{% load money jalali %}
+
+{% block title %}گزارش فروش و سود — {{ shop.shop_name }}{% endblock %}
+
+{% block content %}
+<div class="page-head">
+    <div>
+        <span class="kicker">مدیریت</span>
+        <h1>گزارش فروش، خرید و سود</h1>
+        <p class="page-head__desc">
+            بازه‌ی {{ start|jalali }} تا {{ end|jalali }} · سود بر اساس «قیمت خرید در لحظه‌ی فروش» محاسبه می‌شود.
+        </p>
+    </div>
+    <div class="row">
+        <a href="{% url 'reports-export' %}?from={{ start|date:'Y-m-d' }}&to={{ end|date:'Y-m-d' }}" class="brut-btn">⬇ خروجی CSV</a>
+        <a href="{% url 'reports' %}" class="brut-btn brut-btn--ghost">۳۰ روز اخیر</a>
+    </div>
+</div>
+
+<form method="get" class="brut-card brut-card--flat mb-3" style="padding:12px">
+    <div class="row" style="align-items:flex-end">
+        <div>
+            <label for="from">از تاریخ (میلادی)</label>
+            <input id="from" type="date" name="from" value="{{ start|date:'Y-m-d' }}" dir="ltr">
+        </div>
+        <div>
+            <label for="to">تا تاریخ (میلادی)</label>
+            <input id="to" type="date" name="to" value="{{ end|date:'Y-m-d' }}" dir="ltr">
+        </div>
+        <button type="submit" class="brut-btn brut-btn--dark">اعمال بازه</button>
+        <span class="spacer"></span>
+        <span class="text-xs muted">فاکتورهای پیش‌نویس در گزارش نمی‌آیند.</span>
+    </div>
+</form>
+
+<div class="grid grid-4 mb-3">
+    <div class="kpi">
+        <div class="kpi__label">فروش</div>
+        <div class="kpi__value">{{ revenue|money:shop }}</div>
+        <div class="kpi__hint">{{ sell_count }} فاکتور · {{ items_sold }} قلم</div>
+    </div>
+    <div class="kpi kpi--orange">
+        <div class="kpi__label">خرید</div>
+        <div class="kpi__value">{{ buy_total|money:shop }}</div>
+        <div class="kpi__hint">{{ buy_count }} فاکتور خرید</div>
+    </div>
+    <div class="kpi kpi--green">
+        <div class="kpi__label">سود ناخالص</div>
+        <div class="kpi__value">{{ profit|money:shop }}</div>
+        <div class="kpi__hint">حاشیه سود {{ margin|floatformat:1 }}%</div>
+    </div>
+    <div class="kpi kpi--red">
+        <div class="kpi__label">بهای تمام‌شده</div>
+        <div class="kpi__value">{{ cost|money:shop }}</div>
+        <div class="kpi__hint">{{ unaccounted }} فاکتور در انتظار حسابدار</div>
+    </div>
+</div>
+
+<div class="grid grid-2 mb-3">
+    <div class="brut-card">
+        <div class="brut-card__head">
+            <span class="brut-card__title">فروش روزانه</span>
+            <span class="legend"><span><i style="background:var(--ink)"></i>فروش</span><span><i style="background:var(--green)"></i>سود</span></span>
+        </div>
+        {% if daily %}
+        <div class="bars">
+            {% for point in daily %}
+            <div class="bar-col" title="{{ point.date|jalali }} — فروش {{ point.revenue|money:shop }} / سود {{ point.profit|money:shop }}">
+                <div class="bar" style="height: {{ point.height }}%; background: var(--ink)" title="فروش"></div>
+                <div class="bar bar--profit" style="height: {{ point.profit_height }}%; background: var(--green)" title="سود"></div>
+                <span class="bar-label">{{ point.date|jalali_short }}</span>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="table-empty">در این بازه فروشی ثبت نشده است.</div>
+        {% endif %}
+    </div>
+
+    <div class="brut-card">
+        <div class="brut-card__head">
+            <span class="brut-card__title">ارزش انبار</span>
+            <span class="badge badge--acid">{{ low_stock|length }} کم‌موجود</span>
+        </div>
+        <div class="grid grid-2">
+            <div>
+                <div class="kpi__label">به قیمت خرید</div>
+                <div class="kpi__value">{{ inventory_cost|money:shop }}</div>
+            </div>
+            <div>
+                <div class="kpi__label">به قیمت فروش</div>
+                <div class="kpi__value">{{ inventory_retail|money:shop }}</div>
+            </div>
+        </div>
+        <div class="mt-3">
+            <div class="brut-card__sub mb-1">کم‌موجودترین کالاها (آستانه {{ threshold }})</div>
+            {% for product in low_stock %}
+            <div class="row row--between" style="border-bottom:2px dashed var(--ink);padding:6px 0">
+                <span style="font-weight:700">{{ product.name }}</span>
+                <span class="badge badge--danger">{{ product.count }}</span>
+            </div>
+            {% empty %}
+            <p class="helptext">همه‌ی کالاها موجودی کافی دارند.</p>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<div class="grid grid-2 mb-3">
+    <div class="brut-card">
+        <div class="brut-card__head"><span class="brut-card__title">سودآورترین کالاها</span></div>
+        <div class="table-wrap" style="box-shadow:none">
+            <table class="brut-table" style="min-width:0">
+                <thead><tr><th>کالا</th><th class="num">تعداد</th><th class="num">فروش</th><th class="num">سود</th></tr></thead>
+                <tbody>
+                    {% for name, data in top_products %}
+                    <tr>
+                        <td>{{ name }}</td>
+                        <td class="num">{{ data.qty }}</td>
+                        <td class="num">{{ data.revenue|money:shop }}</td>
+                        <td class="num" style="font-weight:900">{{ data.profit|money:shop }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="4" class="table-empty">داده‌ای نیست.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="brut-card">
+        <div class="brut-card__head"><span class="brut-card__title">آخرین فاکتورهای فروش</span></div>
+        <div class="table-wrap" style="box-shadow:none">
+            <table class="brut-table" style="min-width:0">
+                <thead><tr><th>شماره</th><th>تاریخ</th><th>مشتری</th><th class="num">مبلغ</th></tr></thead>
+                <tbody>
+                    {% for invoice in recent %}
+                    <tr>
+                        <td class="mono"><a href="{% url 'faktor:sell-preview' invoice.pk %}" style="text-decoration:underline">{{ invoice.number }}</a></td>
+                        <td class="mono">{{ invoice.date|jalali_short }}</td>
+                        <td>{{ invoice.customer|default:"—" }}</td>
+                        <td class="num">{{ invoice.total_price|money:shop }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="4" class="table-empty">فاکتوری نیست.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

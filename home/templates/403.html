@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}دسترسی غیرمجاز — {{ shop.shop_name }}{% endblock %}
+{% block content %}
+<div class="brut-card" style="max-width:640px;margin:50px auto;background:var(--acid);text-align:center">
+    <div style="font-size:3rem">⛔</div>
+    <h1 class="mb-2">دسترسی غیرمجاز</h1>
+    <p class="mb-3" style="font-weight:700">این بخش برای نقش شما مجاز نیست یا نشست شما منقضی شده است.</p>
+    <div class="row" style="justify-content:center">
+        <a href="{% url 'home' %}" class="brut-btn brut-btn--dark">بازگشت به داشبورد</a>
+        <a href="{% url 'login' %}" class="brut-btn">ورود دوباره</a>
+    </div>
+</div>
+{% endblock %}
