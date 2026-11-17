@@ -1,4 +1,4 @@
-/* Liquid Glass Demo - Dark Theme */
+/* Liquid Glass Demo - Brutalist Design */
 
 * {
   box-sizing: border-box;
@@ -6,13 +6,26 @@
   padding: 0;
 }
 
+:root {
+  --bg: #f4f1de;
+  --bg-dark: #e3e0cf;
+  --text: #1a1a1a;
+  --accent: #d90429;
+  --accent-secondary: #8d99ae;
+  --yellow: #ffd60a;
+  --black: #000000;
+  --border: 3px solid #1a1a1a;
+  --shadow: 6px 6px 0px #1a1a1a;
+}
+
 .app {
   min-height: 100vh;
-  background: linear-gradient(135deg, #0a0a0f 0%, #1a1a2e 50%, #0a0a15 100%);
-  color: #ffffff;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Courier New', monospace;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 header {
@@ -20,29 +33,33 @@ header {
   padding: 2rem 1rem;
   position: relative;
   z-index: 10;
+  background: var(--yellow);
+  border-bottom: var(--border);
 }
 
 header h1 {
-  font-size: 2.5rem;
-  font-weight: 700;
-  background: linear-gradient(135deg, #ffffff 0%, #a5b4fc 50%, #ffffff 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  font-size: 3rem;
+  font-weight: 900;
+  color: var(--black);
+  text-transform: uppercase;
+  letter-spacing: -2px;
   margin-bottom: 0.5rem;
-  text-shadow: 0 0 40px rgba(165, 180, 252, 0.5);
+  text-shadow: 3px 3px 0px var(--black);
 }
 
 header p {
-  color: #94a3b8;
+  color: var(--black);
   font-size: 1rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
 }
 
 /* Main scene container */
 .scene-container {
   flex: 1;
   position: relative;
-  min-height: 60vh;
+  min-height: 0;
 }
 
 .canvas {
@@ -50,19 +67,37 @@ header p {
   height: 100%;
 }
 
-/* Controls Sidebar */
+/* Brutalist Controls Sidebar */
 .controls-sidebar {
   position: fixed;
   right: 0;
   top: 0;
   height: 100vh;
-  width: 320px;
-  background: rgba(15, 15, 25, 0.9);
-  backdrop-filter: blur(20px);
-  border-left: 1px solid rgba(255, 255, 255, 0.1);
+  width: 340px;
+  background: var(--bg);
+  border-left: var(--border);
+  box-shadow: -10px 0 0px var(--black);
   padding: 1.5rem;
   overflow-y: auto;
   z-index: 100;
+}
+
+.controls-sidebar::-webkit-scrollbar {
+  width: 12px;
+}
+
+.controls-sidebar::-webkit-scrollbar-track {
+  background: var(--bg-dark);
+  border-left: var(--border);
+}
+
+.controls-sidebar::-webkit-scrollbar-thumb {
+  background: var(--accent);
+  border: 2px solid var(--black);
+}
+
+.controls-sidebar::-webkit-scrollbar-thumb:hover {
+  background: var(--black);
 }
 
 .controls {
@@ -72,18 +107,26 @@ header p {
 }
 
 .controls h3 {
-  font-size: 1.1rem;
-  font-weight: 600;
-  color: #ffffff;
-  padding-bottom: 0.75rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  font-size: 1rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  color: var(--black);
+  padding: 0.75rem 1rem;
+  background: var(--accent);
+  border: var(--border);
+  box-shadow: var(--shadow);
   margin-bottom: 0.5rem;
 }
 
+/* Brutalist control groups */
 .control-group {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+  padding: 1rem;
+  background: var(--bg-dark);
+  border: var(--border);
+  box-shadow: var(--shadow);
 }
 
 .control-group label {
@@ -91,43 +134,61 @@ header p {
   justify-content: space-between;
   align-items: center;
   font-size: 0.875rem;
-  color: #cbd5e1;
-  font-weight: 500;
+  font-weight: 700;
+  color: var(--black);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.control-group label span {
+  font-family: 'Courier New', monospace;
+  font-size: 0.75rem;
+  background: var(--yellow);
+  padding: 0.2rem 0.5rem;
+  border: 2px solid var(--black);
 }
 
 .control-group input[type='range'] {
   -webkit-appearance: none;
   appearance: none;
   width: 100%;
-  height: 6px;
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 3px;
+  height: 12px;
+  background: var(--bg);
+  border: 2px solid var(--black);
   outline: none;
+  cursor: pointer;
 }
 
 .control-group input[type='range']::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
-  width: 18px;
-  height: 18px;
-  background: linear-gradient(135deg, #818cf8, #6366f1);
-  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  background: var(--accent);
+  border: 2px solid var(--black);
   cursor: pointer;
-  box-shadow: 0 0 10px rgba(99, 102, 241, 0.5);
-  transition: transform 0.15s ease;
+  box-shadow: 3px 3px 0px var(--black);
+  transition: transform 0.1s ease;
 }
 
 .control-group input[type='range']::-webkit-slider-thumb:hover {
-  transform: scale(1.1);
+  transform: translate(-1px, -1px);
+  box-shadow: 4px 4px 0px var(--black);
+}
+
+.control-group input[type='range']::-webkit-slider-thumb:active {
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0px var(--black);
 }
 
 .control-group .hint {
-  font-size: 0.75rem;
-  color: #64748b;
-  line-height: 1.4;
+  font-size: 0.7rem;
+  color: var(--black);
+  font-weight: 600;
+  text-transform: uppercase;
 }
 
-/* Preset buttons */
+/* Brutalist preset buttons */
 .preset-buttons {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
@@ -136,71 +197,95 @@ header p {
 }
 
 .preset-buttons button {
-  padding: 0.75rem 1rem;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 8px;
-  color: #e2e8f0;
-  font-size: 0.8rem;
-  font-weight: 500;
+  padding: 1rem 0.75rem;
+  background: var(--bg);
+  border: var(--border);
+  box-shadow: var(--shadow);
+  color: var(--black);
+  font-size: 0.75rem;
+  font-weight: 900;
+  font-family: 'Courier New', monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.1s ease;
 }
 
 .preset-buttons button:hover {
-  background: rgba(99, 102, 241, 0.2);
-  border-color: rgba(99, 102, 241, 0.5);
-  transform: translateY(-2px);
+  transform: translate(-2px, -2px);
+  box-shadow: 8px 8px 0px var(--black);
+  background: var(--yellow);
 }
 
-/* Loading & Fallback */
-.loading,
-.fallback {
+.preset-buttons button:active {
+  transform: translate(2px, 2px);
+  box-shadow: 2px 2px 0px var(--black);
+}
+
+/* Loading state */
+.loading {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   height: 100%;
   gap: 1rem;
-  color: #94a3b8;
+  color: var(--black);
 }
 
-.css-fallback {
-  margin-top: 2rem;
-  padding: 2rem;
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 16px;
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+.spinner {
+  width: 50px;
+  height: 50px;
+  border: 4px solid var(--bg-dark);
+  border-top-color: var(--accent);
+  border-radius: 0;
+  animation: spin 1s linear infinite;
 }
 
-.css-glass {
-  width: 100px;
-  height: 100px;
-  background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.4), transparent);
-  border-radius: 50%;
-  box-shadow:
-    inset 0 0 20px rgba(255, 255, 255, 0.2),
-    0 10px 30px rgba(0, 0, 0, 0.3);
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Info badge overlay */
+.info-badge {
+  position: absolute;
+  bottom: 20px;
+  left: 20px;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  background: var(--bg);
+  border: var(--border);
+  box-shadow: var(--shadow);
+  color: var(--black);
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  z-index: 10;
 }
 
 /* Footer */
 footer {
   text-align: center;
   padding: 1.5rem;
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
-  background: rgba(15, 15, 25, 0.8);
+  border-top: var(--border);
+  background: var(--bg-dark);
 }
 
 footer p {
-  color: #64748b;
-  font-size: 0.875rem;
+  color: var(--black);
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
 }
 
 footer .tech-stack {
   margin-top: 0.5rem;
-  color: #818cf8;
-  font-size: 0.8rem;
+  color: var(--accent);
+  font-size: 0.7rem;
+  font-weight: 900;
 }
 
 /* Responsive */
@@ -209,8 +294,9 @@ footer .tech-stack {
     width: 100%;
     height: auto;
     position: relative;
-    border-left: none;
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    border-left: var(--border);
+    border-top: var(--border);
+    box-shadow: 0 -10px 0px var(--black);
   }
 
   .scene-container {
@@ -218,7 +304,7 @@ footer .tech-stack {
   }
 
   header h1 {
-    font-size: 1.75rem;
+    font-size: 2rem;
   }
 }
 
@@ -228,10 +314,18 @@ footer .tech-stack {
   }
 
   header h1 {
-    font-size: 1.5rem;
+    font-size: 1.75rem;
+  }
+
+  header p {
+    font-size: 0.8rem;
   }
 
   .preset-buttons {
     grid-template-columns: 1fr;
+  }
+
+  footer p {
+    font-size: 0.65rem;
   }
 }
