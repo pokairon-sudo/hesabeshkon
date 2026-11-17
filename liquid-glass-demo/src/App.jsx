@@ -1,6 +1,6 @@
 import { Canvas, useThree } from '@react-three/fiber'
-import { OrbitControls, PerspectiveCamera, Environment } from '@react-three/drei'
-import { Suspense, useState, useCallback } from 'react'
+import { OrbitControls, PerspectiveCamera } from '@react-three/fiber'
+import { Suspense, useState, useCallback, useMemo } from 'react'
 import { LiquidGlassSphere, BackgroundGeometry, CustomLiquidGlass } from './LiquidGlass'
 import './App.css'
 
@@ -29,7 +29,7 @@ function Controls({ params, setParams }) {
           value={params.ior}
           onChange={(e) => handleChange('ior', parseFloat(e.target.value))}
         />
-        <p className="hint">1.0 = air, 1.33 = water, 1.5 = glass, 2.4 = diamond</p>
+        <p className="hint">1.0=air, 1.33=water, 1.5=glass, 2.4=diamond</p>
       </div>
 
       <div className="control-group">
@@ -40,19 +40,19 @@ function Controls({ params, setParams }) {
         <input
           type="range"
           min="0"
-          max="0.1"
+          max="0.15"
           step="0.001"
           value={params.chromaticAberration}
           onChange={(e) =>
             handleChange('chromaticAberration', parseFloat(e.target.value))
           }
         />
-        <p className="hint">RGB channel separation at edges</p>
+        <p className="hint">RGB edge separation (stronger = more rainbow)</p>
       </div>
 
       <div className="control-group">
         <label>
-          Distortion Scale
+          Distortion
           <span>{params.distortionScale.toFixed(2)}</span>
         </label>
         <input
@@ -65,7 +65,7 @@ function Controls({ params, setParams }) {
             handleChange('distortionScale', parseFloat(e.target.value))
           }
         />
-        <p className="hint">Liquid flow intensity</p>
+        <p className="hint">Liquid flow & surface distortion</p>
       </div>
 
       <div className="control-group">
@@ -81,53 +81,33 @@ function Controls({ params, setParams }) {
           value={params.thickness}
           onChange={(e) => handleChange('thickness', parseFloat(e.target.value))}
         />
-        <p className="hint">Glass material thickness</p>
-      </div>
-
-      <div className="control-group">
-        <label>
-          Roughness
-          <span>{params.roughness.toFixed(2)}</span>
-        </label>
-        <input
-          type="range"
-          min="0"
-          max="1"
-          step="0.01"
-          value={params.roughness}
-          onChange={(e) => handleChange('roughness', parseFloat(e.target.value))}
-        />
-        <p className="hint">Surface smoothness (0 = mirror)</p>
+        <p className="hint">Material thickness for refraction depth</p>
       </div>
 
       <div className="preset-buttons">
         <button onClick={() => setParams({
           ior: 1.5,
-          chromaticAberration: 0.02,
-          distortionScale: 0.5,
+          chromaticAberration: 0.08,
+          distortionScale: 1.0,
           thickness: 2,
-          roughness: 0.05,
         })}>Standard Glass</button>
         <button onClick={() => setParams({
           ior: 2.42,
-          chromaticAberration: 0.05,
-          distortionScale: 0.3,
+          chromaticAberration: 0.12,
+          distortionScale: 0.5,
           thickness: 3,
-          roughness: 0.02,
         })}>Diamond</button>
         <button onClick={() => setParams({
           ior: 1.33,
-          chromaticAberration: 0.01,
-          distortionScale: 0.8,
-          thickness: 1,
-          roughness: 0.1,
+          chromaticAberration: 0.03,
+          distortionScale: 1.5,
+          thickness: 1.5,
         })}>Water</button>
         <button onClick={() => setParams({
           ior: 1.8,
-          chromaticAberration: 0.08,
-          distortionScale: 1.5,
+          chromaticAberration: 0.14,
+          distortionScale: 1.8,
           thickness: 2.5,
-          roughness: 0.15,
         })}>Prism</button>
       </div>
     </div>
@@ -135,27 +115,14 @@ function Controls({ params, setParams }) {
 }
 
 /**
- * Scene loader with fallback
+ * Loading fallback
  */
-function SceneLoader({ children }) {
-  const [hasError, setHasError] = useState(false)
-
-  if (hasError) {
-    return (
-      <div className="fallback">
-        <p>WebGL not supported</p>
-        <p>Falling back to CSS blur effect</p>
-        <div className="css-fallback">
-          <div className="css-glass"></div>
-        </div>
-      </div>
-    )
-  }
-
+function Loader() {
   return (
-    <Suspense fallback={<div className="loading">Loading 3D scene...</div>}>
-      {children}
-    </Suspense>
+    <div className="loading">
+      <div className="spinner"></div>
+      <p>Loading 3D scene...</p>
+    </div>
   )
 }
 
@@ -165,10 +132,9 @@ function SceneLoader({ children }) {
 function App() {
   const [params, setParams] = useState({
     ior: 1.5,
-    chromaticAberration: 0.02,
-    distortionScale: 0.5,
+    chromaticAberration: 0.08,
+    distortionScale: 1.0,
     thickness: 2,
-    roughness: 0.05,
   })
 
   return (
@@ -181,56 +147,53 @@ function App() {
       <main className="scene-container">
         <Canvas
           dpr={[1, 2]}
-          gl={{ antialias: true, alpha: true }}
+          gl={{
+            antialias: true,
+            alpha: false,
+            powerPreference: "high-performance"
+          }}
           className="canvas"
+          camera={{ position: [0, 0, 7], fov: 45 }}
         >
-          <PerspectiveCamera makeDefault position={[0, 0, 8]} fov={50} />
-          <OrbitControls
-            enablePan={false}
-            minDistance={5}
-            maxDistance={15}
-            autoRotate
-            autoRotateSpeed={0.5}
-          />
+          <color attach="background" args={['#050508']} />
 
-          <color attach="background" args={['#0a0a0f']} />
+          {/* Lighting */}
+          <ambientLight intensity={0.4} />
+          <pointLight position={[10, 10, 10]} intensity={1.5} color="#ff6b6b" />
+          <pointLight position={[-10, -10, 10]} intensity={1.2} color="#4ecdc4" />
+          <pointLight position={[0, 15, -10]} intensity={1} color="#ffe66d" />
+          <pointLight position={[0, -15, -10]} intensity={0.8} color="#c7d2fe" />
 
-          {/* Lighting for scene depth */}
-          <ambientLight intensity={0.3} />
-          <pointLight position={[10, 10, 10]} intensity={1} color="#ff6b6b" />
-          <pointLight position={[-10, -10, 10]} intensity={0.8} color="#4ecdc4" />
-          <pointLight position={[0, 10, -10]} intensity={0.5} color="#ffe66d" />
-          <spotLight
-            position={[0, 20, 5]}
-            angle={0.3}
-            penumbra={0.5}
-            intensity={0.5}
-            color="#ffffff"
-          />
-
-          <SceneLoader>
-            {/* Background geometry that gets refracted */}
+          <Suspense fallback={null}>
+            {/* Background objects to be refracted */}
             <BackgroundGeometry />
 
-            {/* Main liquid glass sphere */}
+            {/* Main transparent glass sphere */}
             <LiquidGlassSphere
               ior={params.ior}
               chromaticAberration={params.chromaticAberration}
               distortionScale={params.distortionScale}
               thickness={params.thickness}
-              roughness={params.roughness}
-              color="#ffffff"
             />
 
-            {/* Secondary glass elements */}
+            {/* Secondary glass element with custom shader */}
             <CustomLiquidGlass
-              ior={params.ior * 1.2}
-              chromaticAberration={params.chromaticAberration * 1.5}
-              distortionScale={params.distortionScale * 0.8}
+              ior={params.ior}
+              chromaticAberration={params.chromaticAberration}
+              distortionScale={params.distortionScale}
             />
-          </SceneLoader>
+          </Suspense>
 
-          <Environment preset="night" />
+          <OrbitControls
+            enablePan={false}
+            minDistance={4}
+            maxDistance={12}
+            autoRotate
+            autoRotateSpeed={0.8}
+            enableZoom={true}
+            enableDamping={true}
+            dampingFactor={0.05}
+          />
         </Canvas>
       </main>
 
@@ -239,12 +202,8 @@ function App() {
       </aside>
 
       <footer>
-        <p>
-          Drag to rotate • Scroll to zoom • Parameters adjust in real-time
-        </p>
-        <p className="tech-stack">
-          React Three Fiber • Three.js • GLSL Shaders
-        </p>
+        <p>Drag to rotate • Scroll to zoom • Adjust parameters live</p>
+        <p className="tech-stack">React Three Fiber • Three.js • GLSL Shaders</p>
       </footer>
     </div>
   )
