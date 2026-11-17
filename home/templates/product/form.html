@@ -17,7 +17,7 @@
   .form-section {
     margin-bottom: 2rem;
     padding-bottom: 2rem;
-    border-bottom: 1px solid var(--glass-border);
+    border-bottom: 2px solid #000000;
   }
 
   .form-section:last-child {
@@ -32,13 +32,13 @@
     gap: 0.75rem;
     margin-bottom: 1.5rem;
     font-size: 1.1rem;
-    font-weight: 600;
+    font-weight: 700;
   }
 
   .form-section-title svg {
     width: 1.25rem;
     height: 1.25rem;
-    color: #667eea;
+    color: var(--primary);
   }
 
   .form-row-2 {
@@ -58,10 +58,12 @@
     align-items: center;
     gap: 1rem;
     padding: 1rem;
-    background: rgba(67, 233, 123, 0.1);
-    border: 1px solid rgba(67, 233, 123, 0.3);
+    background: var(--success);
+    border: 2px solid #000000;
     border-radius: var(--radius-md);
     margin-bottom: 1rem;
+    box-shadow: 4px 4px 0px #000000;
+    font-weight: 600;
   }
 
   .barcode-preview {
@@ -70,9 +72,11 @@
     letter-spacing: 0.3em;
     padding: 0.75rem 1rem;
     background: white;
+    border: 2px solid #000000;
     border-radius: var(--radius-sm);
     color: black;
     text-align: center;
+    box-shadow: 2px 2px 0px #000000;
   }
 
   .price-calculation {
@@ -85,7 +89,7 @@
   }
 
   .price-calculation strong {
-    color: #43e97b;
+    color: var(--success);
   }
 
   .file-upload {
@@ -95,15 +99,16 @@
     align-items: center;
     gap: 1rem;
     padding: 2rem;
-    border: 2px dashed var(--glass-border);
+    border: 3px dashed #000000;
     border-radius: var(--radius-lg);
     cursor: pointer;
-    transition: all var(--transition-normal);
+    transition: all 0.2s;
+    background: #f5f5f5;
   }
 
   .file-upload:hover {
-    border-color: #667eea;
-    background: rgba(102, 126, 234, 0.05);
+    border-color: var(--primary);
+    background: var(--accent);
   }
 
   .file-upload input {
@@ -212,8 +217,8 @@
 
           <div class="form-group">
             <label class="form-label">سود محاسبه‌شده</label>
-            <div style="padding: 0.875rem 1rem; background: rgba(67, 233, 123, 0.1); border: 1px solid rgba(67, 233, 123, 0.3); border-radius: var(--radius-md);">
-              <span id="profit-display" style="font-size: 1.25rem; font-weight: 700; color: #43e97b;">0%</span>
+            <div style="padding: 0.875rem 1rem; background: var(--success); border: 2px solid #000000; border-radius: var(--radius-md); box-shadow: 2px 2px 0px #000000;">
+              <span id="profit-display" style="font-size: 1.25rem; font-weight: 700; color: #FFFFFF;">0%</span>
             </div>
           </div>
         </div>
@@ -250,13 +255,14 @@
 
         <div class="form-group">
           <div style="display: flex; align-items: center; gap: 0.75rem;">
-            <label class="toggle-switch">
+            <label class="toggle-switch" style="width: 50px; height: 28px;">
               <input type="checkbox" name="is_active" {% if form.is_active.value|default:true %}checked{% endif %}>
-              <span class="toggle-slider"></span>
+              <span class="toggle-slider" style="position: absolute; cursor: pointer; inset: 0; background: #e0e0e0; border: 2px solid #000000; border-radius: 28px; transition: all 0.2s; box-shadow: 2px 2px 0px #000000;"></span>
+              <span class="toggle-slider::before" style="position: absolute; content: ''; height: 16px; width: 16px; left: 4px; top: 4px; background: white; border-radius: 50%; transition: all 0.2s;"></span>
             </label>
-            <label style="font-weight: 500;">کالا فعال باشد</label>
+            <label style="font-weight: 600;">کالا فعال باشد</label>
           </div>
-          <span class="setting-hint">کالای غیرفعال در فاکتور قابل انتخاب نیست</span>
+          <span class="setting-hint" style="font-size: 0.8rem; color: var(--text-muted); margin-top: -0.25rem;">کالای غیرفعال در فاکتور قابل انتخاب نیست</span>
         </div>
       </div>
 

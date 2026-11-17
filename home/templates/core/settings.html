@@ -21,7 +21,7 @@
     gap: 0.75rem;
     margin-bottom: 1.5rem;
     padding-bottom: 1rem;
-    border-bottom: 1px solid var(--glass-border);
+    border-bottom: 2px solid #000000;
   }
 
   .settings-section-title svg {
@@ -44,7 +44,7 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    font-weight: 500;
+    font-weight: 600;
   }
 
   .setting-hint {
@@ -69,26 +69,28 @@
     position: absolute;
     cursor: pointer;
     inset: 0;
-    background: rgba(255, 255, 255, 0.1);
-    border: 1px solid var(--glass-border);
+    background: #e0e0e0;
+    border: 2px solid #000000;
     border-radius: 28px;
-    transition: var(--transition-normal);
+    transition: all 0.2s;
+    box-shadow: 2px 2px 0px #000000;
   }
 
   .toggle-slider::before {
     position: absolute;
     content: "";
-    height: 20px;
-    width: 20px;
+    height: 16px;
+    width: 16px;
     left: 4px;
+    top: 4px;
     background: white;
     border-radius: 50%;
-    transition: var(--transition-normal);
+    transition: all 0.2s;
   }
 
   .toggle-switch input:checked + .toggle-slider {
-    background: var(--primary-gradient);
-    border-color: transparent;
+    background: var(--primary);
+    box-shadow: none;
   }
 
   .toggle-switch input:checked + .toggle-slider::before {
@@ -106,34 +108,28 @@
     align-items: center;
     gap: 0.5rem;
     padding: 0.75rem 1rem;
+    border: 2px solid #000000;
     border-radius: var(--radius-md);
     margin-bottom: 1rem;
+    font-weight: 600;
+    box-shadow: 4px 4px 0px #000000;
   }
 
   .status-indicator.success {
-    background: rgba(67, 233, 123, 0.1);
-    border: 1px solid rgba(67, 233, 123, 0.3);
+    background: var(--success);
+    color: #FFFFFF;
   }
 
   .status-indicator.warning {
-    background: rgba(250, 112, 154, 0.1);
-    border: 1px solid rgba(250, 112, 154, 0.3);
+    background: var(--warning);
+    color: #000000;
   }
 
   .status-dot {
-    width: 10px;
-    height: 10px;
+    width: 12px;
+    height: 12px;
     border-radius: 50%;
-  }
-
-  .status-indicator.success .status-dot {
-    background: #43e97b;
-    box-shadow: 0 0 10px #43e97b;
-  }
-
-  .status-indicator.warning .status-dot {
-    background: #fa709a;
-    box-shadow: 0 0 10px #fa709a;
+    background: #FFFFFF;
   }
 
   .backup-actions {
