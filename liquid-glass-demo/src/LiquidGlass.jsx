@@ -48,6 +48,27 @@ function LiquidGlassSphere({
 }
 
 /**
+ * Single animated cube component
+ */
+function AnimatedCube({ position, index, color }) {
+  const meshRef = useRef()
+
+  useFrame((state) => {
+    if (meshRef.current) {
+      meshRef.current.rotation.x = Math.sin(state.clock.elapsedTime * 0.5 + index) * 0.3
+      meshRef.current.rotation.y = Math.cos(state.clock.elapsedTime * 0.3 + index) * 0.3
+    }
+  })
+
+  return (
+    <mesh ref={meshRef} position={position}>
+      <boxGeometry args={[1, 1, 1]} />
+      <meshBasicMaterial color={color} />
+    </mesh>
+  )
+}
+
+/**
  * Bright grid of colorful cubes behind the glass
  */
 function BackgroundCubes() {
@@ -55,7 +76,7 @@ function BackgroundCubes() {
 
   useFrame((state, delta) => {
     if (groupRef.current) {
-      groupRef.current.rotation.y += delta * 0.02
+      groupRef.current.rotation.y += delta * 0.01
     }
   })
 
@@ -64,28 +85,25 @@ function BackgroundCubes() {
     '#0066ff', '#6600ff', '#ff00cc', '#00cccc'
   ]
 
+  const cubes = []
+  for (let i = 0; i < 16; i++) {
+    const row = Math.floor(i / 4)
+    const col = i % 4
+    const x = (col - 1.5) * 2.2
+    const y = (row - 1.5) * 2.2
+    cubes.push(
+      <AnimatedCube
+        key={i}
+        position={[x, y, -4]}
+        index={i}
+        color={colors[i % colors.length]}
+      />
+    )
+  }
+
   return (
     <group ref={groupRef}>
-      {Array.from({ length: 16 }).map((_, i) => {
-        const row = Math.floor(i / 4)
-        const col = i % 4
-        const x = (col - 1.5) * 2.2
-        const y = (row - 1.5) * 2.2
-        return (
-          <mesh
-            key={i}
-            position={[x, y, -4]}
-            rotation={[
-              Math.sin((Date.now() / 1000) + i) * 0.3,
-              Math.cos((Date.now() / 1000) + i) * 0.3,
-              (i * Math.PI) / 4
-            ]}
-          >
-            <boxGeometry args={[1, 1, 1]} />
-            <meshBasicMaterial color={colors[i % colors.length]} />
-          </mesh>
-        )
-      })}
+      {cubes}
     </group>
   )
 }
