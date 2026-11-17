@@ -1,7 +1,13 @@
-import { Canvas, useThree } from '@react-three/fiber'
-import { OrbitControls, PerspectiveCamera } from '@react-three/fiber'
-import { Suspense, useState, useCallback, useMemo } from 'react'
-import { LiquidGlassSphere, BackgroundGeometry, CustomLiquidGlass } from './LiquidGlass'
+import { Canvas } from '@react-three/fiber'
+import { OrbitControls } from '@react-three/fiber'
+import { Suspense, useState, useCallback } from 'react'
+import {
+  LiquidGlassSphere,
+  BackgroundCubes,
+  BackgroundRings,
+  BackgroundOrbs,
+  CustomGlassIcosahedron
+} from './LiquidGlass'
 import './App.css'
 
 /**
@@ -90,7 +96,7 @@ function Controls({ params, setParams }) {
           chromaticAberration: 0.08,
           distortionScale: 1.0,
           thickness: 2,
-        })}>Standard Glass</button>
+        })}>Glass</button>
         <button onClick={() => setParams({
           ior: 2.42,
           chromaticAberration: 0.12,
@@ -110,18 +116,6 @@ function Controls({ params, setParams }) {
           thickness: 2.5,
         })}>Prism</button>
       </div>
-    </div>
-  )
-}
-
-/**
- * Loading fallback
- */
-function Loader() {
-  return (
-    <div className="loading">
-      <div className="spinner"></div>
-      <p>Loading 3D scene...</p>
     </div>
   )
 }
@@ -153,22 +147,23 @@ function App() {
             powerPreference: "high-performance"
           }}
           className="canvas"
-          camera={{ position: [0, 0, 7], fov: 45 }}
+          camera={{ position: [0, 0, 8], fov: 50 }}
         >
           <color attach="background" args={['#050508']} />
 
           {/* Lighting */}
-          <ambientLight intensity={0.4} />
-          <pointLight position={[10, 10, 10]} intensity={1.5} color="#ff6b6b" />
-          <pointLight position={[-10, -10, 10]} intensity={1.2} color="#4ecdc4" />
-          <pointLight position={[0, 15, -10]} intensity={1} color="#ffe66d" />
-          <pointLight position={[0, -15, -10]} intensity={0.8} color="#c7d2fe" />
+          <ambientLight intensity={0.5} />
+          <pointLight position={[10, 10, 10]} intensity={2} color="#ff6b6b" />
+          <pointLight position={[-10, -10, 10]} intensity={2} color="#4ecdc4" />
+          <pointLight position={[0, 15, -10]} intensity={1.5} color="#ffe66d" />
 
           <Suspense fallback={null}>
-            {/* Background objects to be refracted */}
-            <BackgroundGeometry />
+            {/* Background objects to be refracted through the glass */}
+            <BackgroundCubes />
+            <BackgroundRings />
+            <BackgroundOrbs />
 
-            {/* Main transparent glass sphere */}
+            {/* Main transparent glass sphere - refracts everything behind it */}
             <LiquidGlassSphere
               ior={params.ior}
               chromaticAberration={params.chromaticAberration}
@@ -177,19 +172,17 @@ function App() {
             />
 
             {/* Secondary glass element with custom shader */}
-            <CustomLiquidGlass
-              ior={params.ior}
+            <CustomGlassIcosahedron
               chromaticAberration={params.chromaticAberration}
-              distortionScale={params.distortionScale}
             />
           </Suspense>
 
           <OrbitControls
             enablePan={false}
-            minDistance={4}
-            maxDistance={12}
+            minDistance={5}
+            maxDistance={15}
             autoRotate
-            autoRotateSpeed={0.8}
+            autoRotateSpeed={1}
             enableZoom={true}
             enableDamping={true}
             dampingFactor={0.05}
@@ -202,8 +195,8 @@ function App() {
       </aside>
 
       <footer>
-        <p>Drag to rotate • Scroll to zoom • Adjust parameters live</p>
-        <p className="tech-stack">React Three Fiber • Three.js • GLSL Shaders</p>
+        <p>Drag to rotate &#8226; Scroll to zoom &#8226; Adjust parameters live</p>
+        <p className="tech-stack">React Three Fiber &#8226; Three.js &#8226; GLSL Shaders</p>
       </footer>
     </div>
   )
