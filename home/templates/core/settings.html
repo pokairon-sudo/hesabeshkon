@@ -1,0 +1,323 @@
+{% extends 'base/base.html' %}
+{% load static %}
+
+{% block title %}تنظیمات | حساب‌شکن{% endblock %}
+
+{% block content %}
+<style>
+  .settings-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1.5rem;
+  }
+
+  .settings-section {
+    padding: 1.5rem;
+  }
+
+  .settings-section-title {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--glass-border);
+  }
+
+  .settings-section-title svg {
+    width: 1.5rem;
+    height: 1.5rem;
+  }
+
+  .setting-row {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-bottom: 1.25rem;
+  }
+
+  .setting-row:last-child {
+    margin-bottom: 0;
+  }
+
+  .setting-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 500;
+  }
+
+  .setting-hint {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin-top: -0.25rem;
+  }
+
+  .toggle-switch {
+    position: relative;
+    width: 50px;
+    height: 28px;
+  }
+
+  .toggle-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+  }
+
+  .toggle-slider {
+    position: absolute;
+    cursor: pointer;
+    inset: 0;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid var(--glass-border);
+    border-radius: 28px;
+    transition: var(--transition-normal);
+  }
+
+  .toggle-slider::before {
+    position: absolute;
+    content: "";
+    height: 20px;
+    width: 20px;
+    left: 4px;
+    background: white;
+    border-radius: 50%;
+    transition: var(--transition-normal);
+  }
+
+  .toggle-switch input:checked + .toggle-slider {
+    background: var(--primary-gradient);
+    border-color: transparent;
+  }
+
+  .toggle-switch input:checked + .toggle-slider::before {
+    transform: translateX(22px);
+  }
+
+  .toggle-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .status-indicator {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
+    border-radius: var(--radius-md);
+    margin-bottom: 1rem;
+  }
+
+  .status-indicator.success {
+    background: rgba(67, 233, 123, 0.1);
+    border: 1px solid rgba(67, 233, 123, 0.3);
+  }
+
+  .status-indicator.warning {
+    background: rgba(250, 112, 154, 0.1);
+    border: 1px solid rgba(250, 112, 154, 0.3);
+  }
+
+  .status-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+  }
+
+  .status-indicator.success .status-dot {
+    background: #43e97b;
+    box-shadow: 0 0 10px #43e97b;
+  }
+
+  .status-indicator.warning .status-dot {
+    background: #fa709a;
+    box-shadow: 0 0 10px #fa709a;
+  }
+
+  .backup-actions {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-top: 1rem;
+  }
+</style>
+
+<div class="page-header">
+  <div>
+    <h1 class="page-title text-gradient">تنظیمات</h1>
+    <p class="page-subtitle">تنظیمات فروشگاه و سیستم</p>
+  </div>
+</div>
+
+<form method="post" action="{% url 'settings' %}">
+  {% csrf_token %}
+
+  <div class="settings-grid">
+    <!-- فروشگاه -->
+    <div class="glass settings-section">
+      <div class="settings-section-title">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+        </svg>
+        <h3>مشخصات فروشگاه</h3>
+      </div>
+
+      <div class="setting-row">
+        <label class="setting-label">نام فروشگاه</label>
+        <input type="text" name="shop_name" class="glass-input" value="{{ settings.shop_name|default:'' }}" placeholder="نام فروشگاه">
+      </div>
+
+      <div class="setting-row">
+        <label class="setting-label">شماره تماس</label>
+        <input type="text" name="phone" class="glass-input" value="{{ settings.phone|default:'' }}" placeholder="0912...">
+      </div>
+
+      <div class="setting-row">
+        <label class="setting-label">آدرس</label>
+        <input type="text" name="address" class="glass-input" value="{{ settings.address|default:'' }}" placeholder="آدرس فروشگاه">
+      </div>
+
+      <div class="setting-row">
+        <label class="setting-label">متن پایین رسید</label>
+        <textarea name="receipt_footer" class="glass-input" rows="2" placeholder="متن که در پایین فاکتور چاپ می‌شود">{{ settings.receipt_footer|default:'' }}</textarea>
+      </div>
+    </div>
+
+    <!-- واحد پول -->
+    <div class="glass settings-section">
+      <div class="settings-section-title">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        <h3>واحد پول</h3>
+      </div>
+
+      <div class="setting-row">
+        <label class="setting-label">نمایش واحد</label>
+        <select name="currency" class="glass-select">
+          <option value="toman" {% if settings.currency == 'toman' %}selected{% endif %}>تومان</option>
+          <option value="rial" {% if settings.currency == 'rial' %}selected{% endif %}>ریال</option>
+        </select>
+      </div>
+
+      <div class="setting-row">
+        <div class="toggle-row">
+          <label class="setting-label">نمایش معادل دلار</label>
+          <label class="toggle-switch">
+            <input type="checkbox" name="show_usd" {% if settings.show_usd %}checked{% endif %}>
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+        <span class="setting-hint">نمایش قیمت‌ها به دلار در کنار تومان</span>
+      </div>
+
+      <div class="setting-row">
+        <label class="setting-label">نرخ دلار (تومان)</label>
+        <input type="number" name="usd_rate" class="glass-input" value="{{ settings.usd_rate|default:0 }}" placeholder="50000">
+      </div>
+    </div>
+
+    <!-- موجودی -->
+    <div class="glass settings-section">
+      <div class="settings-section-title">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+        </svg>
+        <h3>موجودی و انبار</h3>
+      </div>
+
+      <div class="setting-row">
+        <label class="setting-label">آستانه کم‌موجودی</label>
+        <input type="number" name="low_stock_threshold" class="glass-input" value="{{ settings.low_stock_threshold|default:10 }}" placeholder="10">
+        <span class="setting-hint">هنگامی که موجودی به این عدد برسد، هشدار نمایش داده می‌شود</span>
+      </div>
+
+      <div class="setting-row">
+        <div class="toggle-row">
+          <label class="setting-label">مدیریت موجودی</label>
+          <label class="toggle-switch">
+            <input type="checkbox" name="manage_stock" {% if settings.manage_stock %}checked{% endif %}>
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+        <span class="setting-hint">کاهش خودکار موجودی هنگام فروش</span>
+      </div>
+
+      <div class="setting-row">
+        <label class="setting-label">درصد سود پیش‌فرض (%)</label>
+        <input type="number" name="default_profit_percent" class="glass-input" value="{{ settings.default_profit_percent|default:30 }}" placeholder="30">
+        <span class="setting-hint">درصد سود پیش‌فرض برای کالاهای جدید</span>
+      </div>
+    </div>
+
+    <!-- حسابدار -->
+    <div class="glass settings-section">
+      <div class="settings-section-title">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+        </svg>
+        <h3>دیتابیس حسابدار</h3>
+      </div>
+
+      {% if accountant_status == 'connected' %}
+      <div class="status-indicator success">
+        <span class="status-dot"></span>
+        <span>دیتابیس حسابدار متصل است</span>
+      </div>
+      {% else %}
+      <div class="status-indicator warning">
+        <span class="status-dot"></span>
+        <span>دیتابیس حسابدار آماده نیست</span>
+      </div>
+      {% endif %}
+
+      <div class="setting-row">
+        <span class="setting-hint">
+          فاکتورهای نهایی‌شده به دیتابیس حسابدار ارسال می‌شوند. اگر فاکتوری منتظر مانده، می‌توانید دوباره ارسال کنید.
+        </span>
+      </div>
+
+      <button type="submit" name="action" value="retry_accounting" class="glass-btn glass-btn-outline" style="margin-top: 1rem;">
+        <span>↻ ارسال دوباره فاکتورهای منتظر</span>
+      </button>
+    </div>
+
+    <!-- پشتیبان‌گیری -->
+    <div class="glass settings-section" style="grid-column: 1/-1;">
+      <div class="settings-section-title">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" />
+        </svg>
+        <h3>پشتیبان‌گیری</h3>
+      </div>
+
+      <div class="setting-row">
+        <span class="setting-hint">
+          یک نسخه پشتیبان از هر دو دیتابیس (عملیاتی و حسابدار) ایجاد می‌شود. فایل‌های پشتیبان در پوشه backups ذخیره می‌شوند.
+        </span>
+      </div>
+
+      <div class="backup-actions">
+        <button type="submit" name="action" value="backup" class="glass-btn glass-btn-primary">
+          <span>💾 ایجاد پشتیبان</span>
+        </button>
+        <a href="{% url 'backup_download' %}" class="glass-btn glass-btn-outline">
+          <span>⬇️ دانلود آخرین پشتیبان</span>
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Submit Button -->
+  <div style="margin-top: 1.5rem; display: flex; gap: 1rem; justify-content: flex-end;">
+    <a href="{% url 'home' %}" class="glass-btn glass-btn-outline">
+      <span>لغو</span>
+    </a>
+    <button type="submit" name="action" value="save" class="glass-btn glass-btn-primary">
+      <span>💾 ذخیره تنظیمات</span>
+    </button>
+  </div>
+</form>
+{% endblock %}

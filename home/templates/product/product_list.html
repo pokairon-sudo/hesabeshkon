@@ -1,0 +1,355 @@
+{% extends 'base/base.html' %}
+{% load static %}
+
+{% block title %}مدیریت کالاها | حساب‌شکن{% endblock %}
+
+{% block content %}
+<style>
+  .products-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-bottom: 2rem;
+  }
+
+  .search-box {
+    position: relative;
+    flex: 1;
+    max-width: 400px;
+  }
+
+  .search-box input {
+    padding-right: 3rem;
+  }
+
+  .search-box svg {
+    position: absolute;
+    right: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-muted);
+    width: 1.25rem;
+    height: 1.25rem;
+  }
+
+  .filter-bar {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-bottom: 1.5rem;
+  }
+
+  .filter-btn {
+    padding: 0.5rem 1rem;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-full);
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    font-size: 0.85rem;
+  }
+
+  .filter-btn:hover,
+  .filter-btn.active {
+    background: var(--primary-gradient);
+    color: var(--text-primary);
+    border-color: transparent;
+  }
+
+  .product-image-placeholder {
+    height: 120px;
+    background: linear-gradient(135deg, rgba(255,255,255,0.08), rgba(255,255,255,0.03));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2.5rem;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .product-image-placeholder::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(45deg, transparent, rgba(255,255,255,0.05), transparent);
+    animation: shimmer 2s infinite;
+  }
+
+  @keyframes shimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+  }
+
+  .product-actions-bar {
+    display: flex;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
+    border-top: 1px solid var(--glass-border);
+    background: rgba(0, 0, 0, 0.1);
+  }
+
+  .action-icon-btn {
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-sm);
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+  }
+
+  .action-icon-btn:hover {
+    transform: scale(1.1);
+  }
+
+  .action-icon-btn.edit:hover {
+    background: rgba(79, 172, 254, 0.3);
+    border-color: #4facfe;
+  }
+
+  .action-icon-btn.delete:hover {
+    background: rgba(255, 106, 0, 0.3);
+    border-color: #ff6a00;
+  }
+
+  .stock-warning {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 1rem;
+    background: rgba(250, 112, 154, 0.1);
+    border: 1px solid rgba(250, 112, 154, 0.3);
+    border-radius: var(--radius-md);
+    margin-bottom: 1.5rem;
+  }
+
+  .stock-warning-icon {
+    font-size: 1.5rem;
+  }
+</style>
+
+<!-- Page Header -->
+<div class="products-header">
+  <div>
+    <h1 class="page-title text-gradient">مدیریت کالاها</h1>
+    <p class="page-subtitle">مدیریت موجودی، قیمت‌ها و اطلاعات کالاها</p>
+  </div>
+
+  <div class="search-box">
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+    </svg>
+    <input type="text" class="glass-input" placeholder="جستجو کالا (نام یا بارکد)..." id="product-search">
+  </div>
+
+  <a href="{% url 'product_create' %}" class="glass-btn glass-btn-primary">
+    <span>+ کالا جدید</span>
+  </a>
+</div>
+
+<!-- Low Stock Warning -->
+{% if low_stock_products %}
+<div class="stock-warning slide-up">
+  <span class="stock-warning-icon">⚠️</span>
+  <div>
+    <strong>{{ low_stock_products|length }} کالا با موجودی کم</strong>
+    <p style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.25rem;">
+      این کالاها به آستانه کم‌موجودی رسیده‌اند و نیاز به تأمین دارند.
+    </p>
+  </div>
+</div>
+{% endif %}
+
+<!-- Filter Bar -->
+<div class="filter-bar">
+  <button class="filter-btn active" data-filter="all">همه</button>
+  <button class="filter-btn" data-filter="in-stock">موجود</button>
+  <button class="filter-btn" data-filter="low-stock">کم‌موجودی</button>
+  <button class="filter-btn" data-filter="out-of-stock">ناموجود</button>
+  <button class="filter-btn" data-filter="with-discount">در تخفیف</button>
+</div>
+
+<!-- Products Grid -->
+<div class="products-grid" id="products-container">
+  {% for product in products %}
+  <div class="product-card slide-up"
+       data-id="{{ product.id }}"
+       data-name="{{ product.name }}"
+       data-stock="{{ product.stock }}"
+       data-filtered="true"
+       style="animation-delay: {{ forloop.counter0|add:1 }}00ms">
+
+    <div class="product-image-placeholder">
+      {% if product.stock <= 0 %}
+      <span>📭</span>
+      {% elif product.stock <= low_stock_threshold %}
+      <span class="low-stock">📦</span>
+      {% else %}
+      <span>📦</span>
+      {% endif %}
+
+      {% if product.discount and product.discount > 0 %}
+      <span class="product-badge">{{ product.discount }}% تخفیف</span>
+      {% endif %}
+
+      {% if product.stock <= low_stock_threshold and product.stock > 0 %}
+      <span class="product-badge glass-badge-danger">کم‌موجودی</span>
+      {% endif %}
+    </div>
+
+    <div class="product-info">
+      <h3 class="product-name">{{ product.name }}</h3>
+
+      <div class="product-price">
+        <span class="product-price-current">
+          {% if product.discount and product.discount > 0 %}
+            {% widthratio product.sale_price 1 1 as discounted %}
+            {{ discounted|intcomma }}
+          {% else %}
+            {{ product.sale_price|intcomma }}
+          {% endif %}
+        </span>
+        <span class="product-price-original">
+          {{ product.buy_price|intcomma }}
+        </span>
+      </div>
+
+      <div class="product-stock {% if product.stock <= low_stock_threshold %}low{% endif %}">
+        موجودی: {{ product.stock|intcomma }}
+        {% if product.unit %}{{ product.unit }}{% endif %}
+      </div>
+
+      <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem;">
+        بارکد: {{ product.barcode }}
+      </div>
+    </div>
+
+    <div class="product-actions-bar">
+      <a href="{% url 'product_edit' product.id %}" class="action-icon-btn edit" title="ویرایش">
+        ✏️
+      </a>
+      <button class="action-icon-btn" title="چاپ برچسب" onclick="printLabel({{ product.id }})">
+        🏷️
+      </button>
+      <button class="action-icon-btn" title="تاریخچه" onclick="showHistory({{ product.id }})">
+        📊
+      </button>
+      {% if user.is_admin %}
+      <button class="action-icon-btn delete" title="حذف" onclick="deleteProduct({{ product.id }})">
+        🗑️
+      </button>
+      {% endif %}
+    </div>
+  </div>
+  {% empty %}
+  <div class="glass-card" style="grid-column: 1/-1; text-align: center; padding: 3rem;">
+    <div style="font-size: 4rem; margin-bottom: 1rem;">📦</div>
+    <h3>کالایی یافت نشد</h3>
+    <p style="color: var(--text-secondary); margin-top: 0.5rem;">
+      اولین کالا را اضافه کنید
+    </p>
+    <a href="{% url 'product_create' %}" class="glass-btn glass-btn-primary mt-3">
+      <span>+ افزودن کالا</span>
+    </a>
+  </div>
+  {% endfor %}
+</div>
+
+<!-- Autocomplete Suggestions (hidden by default) -->
+<div class="autocomplete-suggestions" id="search-suggestions"></div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  // Filter Products
+  document.querySelectorAll('.filter-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+      document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+      this.classList.add('active');
+
+      const filter = this.dataset.filter;
+      const cards = document.querySelectorAll('.product-card');
+
+      cards.forEach(card => {
+        const stock = parseInt(card.dataset.stock) || 0;
+        let show = true;
+
+        switch(filter) {
+          case 'in-stock':
+            show = stock > {{ low_stock_threshold }};
+            break;
+          case 'low-stock':
+            show = stock > 0 && stock <= {{ low_stock_threshold }};
+            break;
+          case 'out-of-stock':
+            show = stock === 0;
+            break;
+          case 'with-discount':
+            show = card.querySelector('.product-badge') !== null;
+            break;
+        }
+
+        card.style.display = show ? 'block' : 'none';
+      });
+    });
+  });
+
+  // Search with debounce
+  let searchDebounce;
+  document.getElementById('product-search').addEventListener('input', function(e) {
+    clearTimeout(searchDebounce);
+    const query = e.target.value.toLowerCase().trim();
+
+    searchDebounce = setTimeout(() => {
+      document.querySelectorAll('.product-card').forEach(card => {
+        const name = card.dataset.name.toLowerCase();
+        const barcode = card.querySelector('.product-info div:last-child')?.textContent.toLowerCase() || '';
+
+        if (name.includes(query) || barcode.includes(query)) {
+          card.style.display = 'block';
+        } else {
+          card.style.display = 'none';
+        }
+      });
+    }, 300);
+  });
+
+  // Delete Product
+  function deleteProduct(id) {
+    modal.open(
+      'حذف کالا',
+      '<p>آیا از حذف این کالا اطمینان دارید؟ این عملیات غیرقابل بازگشت است.</p>',
+      [
+        { label: 'لغو', type: 'outline', onClick: () => modal.close() },
+        { label: 'حذف', type: 'danger', onClick: () => {
+          window.location.href = `/product/delete/${id}/`;
+        }}
+      ]
+    );
+  }
+
+  // Print Label
+  function printLabel(productId) {
+    toast.info('در حال آماده‌سازی برچسب...');
+    // Implement label printing
+  }
+
+  // Show History
+  function showHistory(productId) {
+    modal.open(
+      'تاریخچه کالا',
+      '<div style="text-align: center; padding: 2rem;"><p>تاریخچه فروش این کالا در حال حاضر نمایش داده نمی‌شود.</p></div>',
+      [
+        { label: 'بستن', type: 'outline', onClick: () => modal.close() }
+      ]
+    );
+  }
+</script>
+{% endblock %}

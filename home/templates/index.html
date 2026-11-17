@@ -1,0 +1,341 @@
+{% extends 'base/base.html' %}
+{% load static %}
+
+{% block title %}داشبورد | حساب‌شکن{% endblock %}
+
+{% block content %}
+<style>
+  .page-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-bottom: 2rem;
+  }
+
+  .page-title {
+    font-size: 1.75rem;
+    font-weight: 700;
+  }
+
+  .page-subtitle {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    margin-top: 0.25rem;
+  }
+
+  .date-display {
+    text-align: left;
+    padding: 1rem 1.5rem;
+  }
+
+  .date-display .date {
+    font-size: 1.25rem;
+    font-weight: 600;
+  }
+
+  .date-display .time {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+  }
+
+  .quick-actions {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-bottom: 2rem;
+  }
+
+  .quick-action-btn {
+    flex: 1;
+    min-width: 140px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 1.25rem;
+    text-decoration: none;
+    color: var(--text-primary);
+  }
+
+  .quick-action-btn svg {
+    width: 2rem;
+    height: 2rem;
+  }
+
+  .quick-action-btn span {
+    font-size: 0.9rem;
+    font-weight: 500;
+  }
+
+  .chart-container {
+    background: var(--glass-bg);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-lg);
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .chart-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1.5rem;
+  }
+
+  .chart-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+  }
+
+  .recent-table {
+    overflow-x: auto;
+  }
+</style>
+
+<!-- Page Header -->
+<div class="page-header">
+  <div>
+    <h1 class="page-title text-gradient">داشبورد</h1>
+    <p class="page-subtitle">به پنل مدیریت حساب‌شکن خوش آمدید</p>
+  </div>
+
+  <div class="glass date-display">
+    <div class="date" id="persian-date">در حال بارگذاری...</div>
+    <div class="time" id="current-time">--:--</div>
+  </div>
+</div>
+
+<!-- Quick Actions -->
+<div class="quick-actions">
+  <a href="{% url 'faktor:sell' %}" class="glass-btn glass-btn-primary quick-action-btn">
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+    </svg>
+    <span>فاکتور فروش جدید</span>
+  </a>
+
+  <a href="{% url 'faktor:buy' %}" class="glass-btn glass-btn-success quick-action-btn">
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+    </svg>
+    <span>ثبت خرید جدید</span>
+  </a>
+
+  <a href="{% url 'product:l-product' %}" class="glass-btn glass-btn-outline quick-action-btn">
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+    </svg>
+    <span>مدیریت کالاها</span>
+  </a>
+
+  <a href="{% url 'reports' %}" class="glass-btn glass-btn-outline quick-action-btn">
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+    </svg>
+    <span>مشاهده گزارش‌ها</span>
+  </a>
+</div>
+
+<!-- Stats Grid -->
+<div class="stats-grid">
+  <div class="stat-card primary slide-up" style="animation-delay: 0ms;">
+    <div class="stat-icon primary">💰</div>
+    <div class="stat-value" data-original="{{ today_sales|default:0|intcomma }}">{{ today_sales|default:0|intcomma }}</div>
+    <div class="stat-label">فروش امروز</div>
+    <div class="stat-change positive">
+      <span>↑</span>
+      <span>{{ today_invoices|default:0 }} فاکتور</span>
+    </div>
+  </div>
+
+  <div class="stat-card success slide-up" style="animation-delay: 100ms;">
+    <div class="stat-icon success">📊</div>
+    <div class="stat-value" data-original="{{ today_profit|default:0|intcomma }}">{{ today_profit|default:0|intcomma }}</div>
+    <div class="stat-label">سود امروز</div>
+    <div class="stat-change positive">
+      <span>↑</span>
+      <span>{{ month_profit|default:0|intcomma }} این ماه</span>
+    </div>
+  </div>
+
+  <div class="stat-card warning slide-up" style="animation-delay: 200ms;">
+    <div class="stat-icon warning">📦</div>
+    <div class="stat-value" data-original="{{ product_count|default:0 }}">{{ product_count|default:0|intcomma }}</div>
+    <div class="stat-label">کل کالاها</div>
+    <div class="stat-change">
+      <span>{{ low_stock_count|default:0 }} کم‌موجودی</span>
+    </div>
+  </div>
+
+  <div class="stat-card danger slide-up" style="animation-delay: 300ms;">
+    <div class="stat-icon danger">📋</div>
+    <div class="stat-value" data-original="{{ draft_count|default:0 }}">{{ draft_count|default:0|intcomma }}</div>
+    <div class="stat-label">پیش‌نویس‌ها</div>
+    <div class="stat-change negative">
+      <span>در انتظار نهایی‌سازی</span>
+    </div>
+  </div>
+</div>
+
+<!-- Low Stock Alerts -->
+{% if low_stock %}
+<div class="chart-container slide-up" style="animation-delay: 400ms;">
+  <div class="chart-header">
+    <h3 class="chart-title">⚠️ کالاهای با موجودی کم</h3>
+    <a href="{% url 'product:l-product' %}?low=1" style="color: #667eea; text-decoration: none; font-size: 0.85rem;">مشاهده همه →</a>
+  </div>
+  <div class="recent-table">
+    <table class="glass-table">
+      <thead>
+        <tr>
+          <th>کالا</th>
+          <th>بارکد</th>
+          <th>موجودی</th>
+          <th>واحد</th>
+          <th style="text-align: left;">عملیات</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for product in low_stock %}
+        <tr>
+          <td>{{ product.name }}</td>
+          <td>{{ product.serial_number }}</td>
+          <td style="color: #fa709a; font-weight: 600;">{{ product.count|intcomma }}</td>
+          <td>{{ product.unit }}</td>
+          <td style="text-align: left;">
+            <a href="{% url 'product:edit-product' product.id %}" class="glass-btn glass-btn-outline" style="padding: 0.25rem 0.5rem; font-size: 0.8rem;">تکمیل موجودی</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+<!-- Draft Invoices -->
+{% if draft_invoices %}
+<div class="chart-container slide-up" style="animation-delay: 500ms;">
+  <div class="chart-header">
+    <h3 class="chart-title">📋 پیش‌نویس‌های ذخیره‌شده</h3>
+    <a href="{% url 'faktor:drafts' %}" style="color: #667eea; text-decoration: none; font-size: 0.85rem;">مشاهده همه →</a>
+  </div>
+  <div class="recent-table">
+    <table class="glass-table">
+      <thead>
+        <tr>
+          <th>شماره</th>
+          <th>تاریخ</th>
+          <th>کاربر</th>
+          <th>تعداد کالا</th>
+          <th>مبلغ</th>
+          <th style="text-align: left;">عملیات</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for invoice in draft_invoices %}
+        <tr>
+          <td>#{{ invoice.id }}</td>
+          <td>{{ invoice.updated_at|date:"Y/m/d H:i" }}</td>
+          <td>{{ invoice.user.get_username }}</td>
+          <td>{{ invoice.items.count }}</td>
+          <td>{{ invoice.total_price|intcomma }}</td>
+          <td style="text-align: left;">
+            <a href="{% url 'faktor:invoice-edit' invoice.id %}" class="glass-btn glass-btn-primary" style="padding: 0.25rem 0.5rem; font-size: 0.8rem;">ادامه</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+<!-- Monthly Summary -->
+<div class="chart-container slide-up" style="animation-delay: 600ms;">
+  <div class="chart-header">
+    <h3 class="chart-title">📈 خلاصه ماه جاری (۲۹ روز گذشته)</h3>
+  </div>
+  <div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); margin-bottom: 0;">
+    <div class="stat-card" style="border-color: rgba(102, 126, 234, 0.3);">
+      <div class="stat-label">فروش کل ماه</div>
+      <div class="stat-value" style="font-size: 1.5rem;">{{ month_sales|default:0|intcomma }}</div>
+    </div>
+    <div class="stat-card" style="border-color: rgba(79, 172, 254, 0.3);">
+      <div class="stat-label">خرید کل ماه</div>
+      <div class="stat-value" style="font-size: 1.5rem;">{{ buy_total_month|default:0|intcomma }}</div>
+    </div>
+    <div class="stat-card" style="border-color: rgba(67, 233, 123, 0.3);">
+      <div class="stat-label">سود ماه</div>
+      <div class="stat-value" style="font-size: 1.5rem;">{{ month_profit|default:0|intcomma }}</div>
+    </div>
+    <div class="stat-card" style="border-color: rgba(240, 147, 251, 0.3);">
+      <div class="stat-label">تعداد فاکتور</div>
+      <div class="stat-value" style="font-size: 1.5rem;">{{ month_invoices|default:0|intcomma }}</div>
+    </div>
+  </div>
+</div>
+
+{% if unaccounted > 0 %}
+<div class="chart-container slide-up" style="animation-delay: 700ms; border-color: rgba(250, 112, 154, 0.4);">
+  <div class="chart-header">
+    <h3 class="chart-title">⏳ فاکتورهای منتظر حسابدار</h3>
+  </div>
+  <div style="text-align: center; padding: 1.5rem;">
+    <div style="font-size: 3rem; margin-bottom: 1rem;">📤</div>
+    <p><strong>{{ unaccounted }} فاکتور</strong> در انتظار ارسال به دیتابیس حسابدار</p>
+    <a href="{% url 'settings' %}" class="glass-btn glass-btn-warning mt-3" style="background: var(--warning-gradient); border: none;">
+      <span>ارسال دوباره</span>
+    </a>
+  </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  // Persian Date Display
+  function updatePersianDate() {
+    const now = new Date();
+    const options = { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' };
+    const persianDate = new Intl.DateTimeFormat('fa-IR', options).format(now);
+    document.getElementById('persian-date').textContent = persianDate;
+
+    // Time
+    const timeOptions = { hour: '2-digit', minute: '2-digit', second: '2-digit' };
+    const time = new Intl.DateTimeFormat('fa-IR', timeOptions).format(now);
+    document.getElementById('current-time').textContent = time;
+  }
+
+  updatePersianDate();
+  setInterval(updatePersianDate, 1000);
+
+  // Animate stat values on load
+  document.querySelectorAll('.stat-value[data-original]').forEach(stat => {
+    const text = stat.dataset.original.replace(/,/g, '');
+    // Remove Persian digits and convert to number
+    const persianDigits = '۰۱۲۳۴۵۶۷۸۹';
+    let engText = text;
+    for (let i = 0; i < 10; i++) {
+      engText = engText.replace(new RegExp(persianDigits[i], 'g'), i);
+    }
+    const value = parseInt(engText) || 0;
+
+    let current = 0;
+    const increment = value / 50;
+    const timer = setInterval(() => {
+      current += increment;
+      if (current >= value) {
+        stat.textContent = value.toLocaleString('fa-IR');
+        clearInterval(timer);
+      } else {
+        stat.textContent = Math.floor(current).toLocaleString('fa-IR');
+      }
+    }, 30);
+  });
+</script>
+{% endblock %}

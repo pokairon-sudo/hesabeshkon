@@ -1,0 +1,745 @@
+{% extends 'base/base.html' %}
+{% load static %}
+
+{% block title %}{% if mode == 'sell' %}فاکتور فروش{% else %}فاکتور خرید{% endif %} | حساب‌شکن{% endblock %}
+
+{% block content %}
+<style>
+  .invoice-container {
+    display: grid;
+    grid-template-columns: 1fr 380px;
+    gap: 1.5rem;
+    align-items: start;
+  }
+
+  .invoice-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1.5rem;
+  }
+
+  .invoice-info {
+    display: flex;
+    gap: 2rem;
+    padding: 1rem;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: var(--radius-md);
+    margin-bottom: 1rem;
+  }
+
+  .info-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .info-label {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .info-value {
+    font-size: 1.1rem;
+    font-weight: 600;
+  }
+
+  .search-section {
+    position: relative;
+    margin-bottom: 1.5rem;
+  }
+
+  .search-input-wrapper {
+    position: relative;
+  }
+
+  .search-input-wrapper input {
+    padding-right: 3.5rem;
+    padding-left: 3rem;
+  }
+
+  .search-input-wrapper svg {
+    position: absolute;
+    right: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-muted);
+    width: 1.25rem;
+    height: 1.25rem;
+  }
+
+  .voice-btn {
+    position: absolute;
+    left: 0.5rem;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--primary-gradient);
+    border: none;
+    border-radius: var(--radius-md);
+    color: white;
+    cursor: pointer;
+    transition: all var(--transition-normal);
+    font-size: 1.25rem;
+  }
+
+  .voice-btn:hover {
+    transform: translateY(-50%) scale(1.05);
+    box-shadow: var(--shadow-glow);
+  }
+
+  .voice-btn.listening {
+    animation: pulse 1.5s infinite;
+    background: var(--danger-gradient);
+  }
+
+  .cart-items {
+    min-height: 300px;
+  }
+
+  .cart-item {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-md);
+    margin-bottom: 0.75rem;
+    transition: all var(--transition-fast);
+  }
+
+  .cart-item:hover {
+    background: rgba(255, 255, 255, 0.06);
+    transform: translateX(-4px);
+  }
+
+  .item-info {
+    flex: 1;
+  }
+
+  .item-name {
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+  }
+
+  .item-price {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+  }
+
+  .item-total {
+    font-weight: 700;
+    color: #43e97b;
+    min-width: 80px;
+    text-align: left;
+  }
+
+  .qty-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .qty-btn {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-sm);
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    font-size: 1.25rem;
+    line-height: 1;
+  }
+
+  .qty-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+    transform: scale(1.1);
+  }
+
+  .qty-input {
+    width: 50px;
+    text-align: center;
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid var(--glass-border);
+    color: var(--text-primary);
+    font-size: 1rem;
+    font-weight: 600;
+    padding: 0.25rem;
+  }
+
+  .qty-input:focus {
+    outline: none;
+    border-bottom-color: #667eea;
+  }
+
+  .remove-btn {
+    background: none;
+    border: none;
+    color: #ff6a00;
+    cursor: pointer;
+    padding: 0.5rem;
+    font-size: 1.25rem;
+    transition: all var(--transition-fast);
+  }
+
+  .remove-btn:hover {
+    transform: scale(1.2);
+    color: #ee1285;
+  }
+
+  .summary-card {
+    background: var(--glass-bg);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-lg);
+    padding: 1.5rem;
+    position: sticky;
+    top: 120px;
+  }
+
+  .summary-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--glass-border);
+  }
+
+  .summary-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  }
+
+  .summary-row:last-child {
+    border-bottom: none;
+    margin-top: 0.5rem;
+    padding-top: 1rem;
+    border-top: 2px solid var(--glass-border);
+  }
+
+  .summary-label {
+    color: var(--text-secondary);
+  }
+
+  .summary-value {
+    font-weight: 600;
+    font-size: 1.1rem;
+  }
+
+  .summary-total .summary-value {
+    font-size: 1.5rem;
+    background: var(--primary-gradient);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .invoice-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-top: 1.5rem;
+  }
+
+  .invoice-actions .glass-btn {
+    width: 100%;
+    padding: 1rem;
+    font-size: 1rem;
+  }
+
+  .empty-cart {
+    text-align: center;
+    padding: 3rem 1.5rem;
+    color: var(--text-muted);
+  }
+
+  .empty-cart-icon {
+    font-size: 4rem;
+    margin-bottom: 1rem;
+    opacity: 0.5;
+  }
+
+  .keyboard-hints {
+    display: flex;
+    gap: 1rem;
+    margin-top: 1rem;
+    padding: 1rem;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: var(--radius-md);
+    font-size: 0.75rem;
+    flex-wrap: wrap;
+  }
+
+  .keyboard-hints kbd {
+    background: rgba(255, 255, 255, 0.1);
+    padding: 0.15rem 0.4rem;
+    border-radius: 4px;
+    font-family: monospace;
+    border: 1px solid var(--glass-border);
+  }
+
+  .search-suggestions {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    margin-top: 0.5rem;
+    background: var(--glass-bg);
+    backdrop-filter: blur(30px);
+    -webkit-backdrop-filter: blur(30px);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    z-index: 100;
+    display: none;
+    max-height: 300px;
+    overflow-y: auto;
+  }
+
+  .suggestion-item {
+    padding: 0.75rem 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    transition: background var(--transition-fast);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+  }
+
+  .suggestion-item:last-child {
+    border-bottom: none;
+  }
+
+  .suggestion-item:hover {
+    background: rgba(255, 255, 255, 0.1);
+  }
+
+  .suggestion-name {
+    font-weight: 500;
+  }
+
+  .suggestion-price {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+  }
+
+  .suggestion-stock {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+  }
+
+  .form-input {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-md);
+    color: var(--text-primary);
+    font-size: 0.9rem;
+    margin-bottom: 1rem;
+  }
+
+  .form-input:focus {
+    outline: none;
+    border-color: #667eea;
+    background: rgba(255, 255, 255, 0.1);
+  }
+</style>
+
+<!-- Page Header -->
+<div class="invoice-header">
+  <div>
+    <h1 class="page-title text-gradient">
+      {% if mode == 'sell' %}فاکتور فروش{% else %}فاکتور خرید{% endif %}
+    </h1>
+    <p class="page-subtitle">
+      {% if invoice %}شماره #{{ invoice.number }}{% else %}فاکتور جدید{% endif %}
+    </p>
+  </div>
+
+  <div class="d-flex gap-2">
+    <a href="{% if mode == 'sell' %}{% url 'faktor:sell-list' %}{% else %}{% url 'faktor:buy-list' %}{% endif %}" class="glass-btn glass-btn-outline">
+      <span>بازگشت</span>
+    </a>
+  </div>
+</div>
+
+<!-- Invoice Info -->
+<div class="invoice-info">
+  <div class="info-item">
+    <span class="info-label">تاریخ</span>
+    <span class="info-value" id="invoice-date">{{ today|date:"Y/m/d" }}</span>
+  </div>
+  <div class="info-item">
+    <span class="info-label">
+      {% if mode == 'sell' %}مشتری{% else %}تامین‌کننده{% endif %}
+    </span>
+    <input type="text" name="customer" class="form-input" value="{{ customer_value }}" placeholder="نام">
+  </div>
+  <div class="info-item">
+    <span class="info-label">توضیحات</span>
+    <input type="text" name="description" class="form-input" value="{{ description_value }}" placeholder="توضیحات اختیاری">
+  </div>
+</div>
+
+<!-- Main Content -->
+<div class="invoice-container">
+  <!-- Cart Section -->
+  <div class="glass" style="padding: 1.5rem;">
+    <!-- Search -->
+    <div class="search-section">
+      <div class="search-input-wrapper">
+        <button class="voice-btn voice-input-btn" title="افزودن با صدا" type="button">
+          🎤
+        </button>
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+        </svg>
+        <input type="text"
+               class="glass-input search-bar-input"
+               placeholder="جستجوی کالا با نام یا بارکد... (با Enter اضافه می‌شود)"
+               id="product-search"
+               autofocus
+               data-search-url="{{ search_url }}">
+      </div>
+      <div class="search-suggestions" id="search-suggestions"></div>
+    </div>
+
+    <!-- Cart Items -->
+    <div class="cart-items" id="cart-items">
+      <div class="empty-cart" id="empty-cart">
+        <div class="empty-cart-icon">🛒</div>
+        <h3>سبد خرید خالی است</h3>
+        <p style="margin-top: 0.5rem;">کالاها را جستجو و اضافه کنید</p>
+      </div>
+    </div>
+
+    <!-- Keyboard Hints -->
+    <div class="keyboard-hints">
+      <span><kbd>F6</kbd> ذخیره پیش‌نویس</span>
+      <span><kbd>F7</kbd> نهایی‌سازی</span>
+      <span><kbd>F8</kbd> کالا جدید</span>
+      <span><kbd>F9</kbd> نهایی و چاپ</span>
+    </div>
+
+    <!-- Hidden Form -->
+    <form method="post" id="invoice-form" style="display: none;">
+      {% csrf_token %}
+      <input type="hidden" name="cart_json" id="cart-json" value='{{ cart_json }}'>
+      <input type="hidden" name="customer" value="{{ customer_value }}">
+      <input type="hidden" name="supplier" value="{{ supplier_value }}">
+      <input type="hidden" name="description" value="{{ description_value }}">
+    </form>
+  </div>
+
+  <!-- Summary Section -->
+  <div class="summary-card" id="summary-card">
+    <h3 class="summary-title">خلاصه فاکتور</h3>
+
+    <div id="summary-content">
+      <div class="summary-row">
+        <span class="summary-label">تعداد کالا</span>
+        <span class="summary-value" id="summary-count">0</span>
+      </div>
+      <div class="summary-row">
+        <span class="summary-label">جمع کل</span>
+        <span class="summary-value" id="summary-subtotal">0</span>
+      </div>
+      <div class="summary-row summary-total">
+        <span class="summary-label">مبلغ قابل پرداخت</span>
+        <span class="summary-value" id="summary-total">0</span>
+      </div>
+    </div>
+
+    <div class="invoice-actions">
+      <button class="glass-btn glass-btn-outline" onclick="submitDraft()">
+        <span>💾 ذخیره پیش‌نویس (F6)</span>
+      </button>
+      <button class="glass-btn glass-btn-primary" onclick="submitFinalize()">
+        <span>✓ نهایی‌سازی (F7)</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Autocomplete Suggestions Container -->
+<div class="search-suggestions" id="autocomplete-suggestions"></div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  // Cart State
+  let cart = {{ cart_seed|safe }};
+
+  // Update Persian Date
+  document.getElementById('invoice-date').textContent = new Intl.DateTimeFormat('fa-IR', {
+    year: 'numeric', month: 'long', day: 'numeric'
+  }).format(new Date());
+
+  // Search Products
+  const searchInput = document.getElementById('product-search');
+  const suggestionsBox = document.getElementById('autocomplete-suggestions');
+  const searchUrl = searchInput.dataset.searchUrl;
+
+  let searchDebounce;
+
+  searchInput.addEventListener('input', function(e) {
+    clearTimeout(searchDebounce);
+    const query = e.target.value.trim();
+
+    if (query.length < 1) {
+      suggestionsBox.style.display = 'none';
+      return;
+    }
+
+    searchDebounce = setTimeout(() => {
+      searchProducts(query);
+    }, 200);
+  });
+
+  searchInput.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      addFirstSuggestion();
+      suggestionsBox.style.display = 'none';
+      this.value = '';
+    }
+  });
+
+  // Close suggestions on outside click
+  document.addEventListener('click', function(e) {
+    if (!e.target.closest('.search-section')) {
+      suggestionsBox.style.display = 'none';
+    }
+  });
+
+  async function searchProducts(query) {
+    try {
+      const response = await fetch(`${searchUrl}?q=${encodeURIComponent(query)}`);
+      const data = await response.json();
+
+      if (data.products && data.products.length > 0) {
+        showSuggestions(data.products);
+      } else {
+        suggestionsBox.style.display = 'none';
+      }
+    } catch (error) {
+      console.error('Search error:', error);
+    }
+  }
+
+  function showSuggestions(products) {
+    suggestionsBox.innerHTML = products.map(product => `
+      <div class="suggestion-item" onclick="addProduct(${product.id}, '${product.name}', ${product.sale_price})">
+        <div>
+          <div class="suggestion-name">${product.name}</div>
+          <div class="suggestion-stock">موجودی: ${product.count.toLocaleString('fa-IR')}</div>
+        </div>
+        <div class="suggestion-price">${product.sale_price.toLocaleString('fa-IR')} تومان</div>
+      </div>
+    `).join('');
+
+    suggestionsBox.style.display = 'block';
+  }
+
+  function addFirstSuggestion() {
+    const first = suggestionsBox.querySelector('.suggestion-item');
+    if (first) {
+      first.click();
+    }
+  }
+
+  function addProduct(id, name, price) {
+    const existing = cart.find(item => item.id === id);
+    if (existing) {
+      existing.quantity++;
+    } else {
+      cart.push({
+        id,
+        name,
+        price,
+        quantity: 1
+      });
+    }
+    renderCart();
+  }
+
+  function updateQuantity(id, delta) {
+    const item = cart.find(item => item.id === id);
+    if (item) {
+      item.quantity += delta;
+      if (item.quantity <= 0) {
+        cart = cart.filter(i => i.id !== id);
+      }
+    }
+    renderCart();
+  }
+
+  function removeItem(id) {
+    cart = cart.filter(item => item.id !== id);
+    renderCart();
+  }
+
+  function renderCart() {
+    const container = document.getElementById('cart-items');
+    const emptyCart = document.getElementById('empty-cart');
+
+    if (cart.length === 0) {
+      emptyCart.style.display = 'block';
+      updateSummary();
+      return;
+    }
+
+    emptyCart.style.display = 'none';
+
+    container.innerHTML = cart.map(item => `
+      <div class="cart-item" data-id="${item.id}">
+        <div class="item-info">
+          <div class="item-name">${item.name}</div>
+          <div class="item-price">${item.price.toLocaleString('fa-IR')} تومان / عدد</div>
+        </div>
+        <div class="qty-controls">
+          <button class="qty-btn" onclick="updateQuantity(${item.id}, -1)">−</button>
+          <input type="number" class="qty-input" value="${item.quantity}" readonly>
+          <button class="qty-btn" onclick="updateQuantity(${item.id}, 1)">+</button>
+        </div>
+        <div class="item-total">${(item.price * item.quantity).toLocaleString('fa-IR')}</div>
+        <button class="remove-btn" onclick="removeItem(${item.id})">×</button>
+      </div>
+    `).join('');
+
+    updateSummary();
+  }
+
+  function updateSummary() {
+    const count = cart.reduce((sum, item) => sum + item.quantity, 0);
+    const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    const total = subtotal;
+
+    document.getElementById('summary-count').textContent = count.toLocaleString('fa-IR');
+    document.getElementById('summary-subtotal').textContent = subtotal.toLocaleString('fa-IR');
+    document.getElementById('summary-total').textContent = total.toLocaleString('fa-IR');
+
+    // Update hidden form
+    document.getElementById('cart-json').value = JSON.stringify(cart);
+  }
+
+  async function submitDraft() {
+    if (cart.length === 0) {
+      toast.error('سبد خرید خالی است');
+      return;
+    }
+
+    const form = document.getElementById('invoice-form');
+    const action = form.action + '?action=draft';
+    form.action = action;
+    form.submit();
+  }
+
+  async function submitFinalize() {
+    if (cart.length === 0) {
+      toast.error('سبد خرید خالی است');
+      return;
+    }
+
+    const form = document.getElementById('invoice-form');
+    const action = form.action + '?action=finalize';
+    form.action = action;
+    form.submit();
+  }
+
+  // Voice Input
+  const voiceBtn = document.querySelector('.voice-input-btn');
+
+  if (voiceBtn && 'webkitSpeechRecognition' in window) {
+    const recognition = new webkitSpeechRecognition();
+    recognition.lang = 'fa-IR';
+    recognition.continuous = false;
+
+    voiceBtn.addEventListener('click', () => {
+      recognition.start();
+      voiceBtn.classList.add('listening');
+    });
+
+    recognition.onresult = (event) => {
+      const text = event.results[0][0].transcript;
+      parseVoiceCommand(text);
+      voiceBtn.classList.remove('listening');
+    };
+
+    recognition.onerror = () => {
+      toast.error('خطا در تشخیص صدا');
+      voiceBtn.classList.remove('listening');
+    };
+
+    recognition.onend = () => {
+      voiceBtn.classList.remove('listening');
+    };
+  } else {
+    voiceBtn.style.display = 'none';
+  }
+
+  function parseVoiceCommand(text) {
+    const persianDigits = '۰۱۲۳۴۵۶۷۸۹';
+    const englishDigits = '0123456789';
+
+    let quantity = 1;
+    let productName = text;
+
+    const match = text.match(/(\d+|[۰-۹]+)/);
+    if (match) {
+      let qtyStr = match[1];
+      for (let i = 0; i < 10; i++) {
+        qtyStr = qtyStr.replace(new RegExp(persianDigits[i], 'g'), englishDigits[i]);
+      }
+      quantity = parseInt(qtyStr);
+      productName = text.replace(match[0], '').trim();
+      productName = productName.replace(/تایی|عدد|عدد تا/g, '').trim();
+    }
+
+    searchInput.value = productName;
+    searchProducts(productName);
+
+    toast.info(`جستجو: ${productName}`);
+  }
+
+  // Keyboard Shortcuts
+  document.addEventListener('keydown', function(e) {
+    if (e.target.tagName === 'INPUT' && e.target.type !== 'button') return;
+
+    switch(e.key) {
+      case 'F6':
+        e.preventDefault();
+        submitDraft();
+        break;
+      case 'F7':
+        e.preventDefault();
+        submitFinalize();
+        break;
+      case 'F8':
+        e.preventDefault();
+        window.location.href = '{{ product_create_url }}';
+        break;
+    }
+  });
+
+  // Initialize
+  renderCart();
+</script>
+{% endblock %}
